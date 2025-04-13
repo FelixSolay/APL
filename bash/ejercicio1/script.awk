@@ -2,29 +2,72 @@ BEGIN{
     print "Inicializando el procesamiento de datos..."
 }
 
+    # if(id ~ /^[0-9]+$/ && fecha ~ /^[0-9]{4}\/(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[0-1])$/ && 
+    # hora ~ /([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]/ && 
+    # (direccion == "Norte" || direccion == "Sur" || direccion == "Este" || direccion == "Oeste") && 
+    # temp ~ /[0-9]+.[0-9]+/)
+    #     return "valido"
+    # return "invalido"
+
+function validarParametros(id, fecha, hora, direccion, temp)
 {
+    cadena = ""
+
+    if(id !~ /^[0-9]+$/)
+        cadena = cadena "Error en el ID. El mismo debe ser numerico. \n"
+    if(fecha !~ /^[0-9]{4}\/(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[0-1])$/)
+        cadena = cadena "Error en la fecha. El formato debe ser yyyy/mm/dd. \n"
+    if( hora !~ /([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]/)
+        cadena = cadena "Error en la hora. El formato debe ser hh:mm:ss. \n"
+
+    if((direccion != "Norte" && direccion != "Sur" && direccion != "Este" && direccion != "Oeste"))
+        cadena = cadena "Error en la direccion. Sus posibles valores pueden ser \"Norte\", \"Sur\",\"Este\" u \"Oeste\". \n"
+    if(temp !~ /[0-9]+\.[0-9]+/)
+        cadena = cadena "Error en la temperatura. El valor debe contener numeros decimales.\n"
+
+    if(cadena=="")
+        cadena="valido"
+    return cadena
+
+}
+
+{
+    id=$1
     fecha=$2
+    hora=$3
     direccion=$4
     temp=$5
+    #Primero necesito "declarar" al mensaje como string, no se puede hacer en un solo paso
+    mensajeSalida=""
+    mensajeSalida = mensajeSalida validarParametros($1,$2,$3,$4,$5)
 
-    #SUBSEP es el separador de awk, es el mas seguro de usar en vez de hardcodearlo
-    #Esto lo tengo que hacer asi porque awk no puede manejar arrays multidimensionales
-    clave = fecha SUBSEP direccion
-
-    #Variables para el promedio
-    cantApariciones[clave]++
-    suma[clave]+=temp
-
-    #Inicializo las temperaturas si no fueron cargadas, sino actualizo la mayor y menor
-    if(! (clave in temperaturaMin))
+    if(mensajeSalida=="valido")
     {
-        temperaturaMin[clave]=temp
-        temperaturaMax[clave]=temp
+        #SUBSEP es el separador de awk, es el mas seguro de usar en vez de hardcodearlo
+        #Esto lo tengo que hacer asi porque awk no puede manejar arrays multidimensionales
+        clave = fecha SUBSEP direccion
+
+        #Variables para el promedio
+        cantApariciones[clave]++
+        suma[clave]+=temp
+
+        #Inicializo las temperaturas si no fueron cargadas, sino actualizo la mayor y menor
+        if(! (clave in temperaturaMin))
+        {
+            temperaturaMin[clave]=temp
+            temperaturaMax[clave]=temp
+        }
+        else
+        {
+            temperaturaMax[clave]=temperaturaMax[clave]<temp?temp:temperaturaMax[clave]
+            temperaturaMin[clave]=temperaturaMin[clave]>temp?temp:temperaturaMin[clave]
+        }
     }
-    else
+    else 
     {
-        temperaturaMax[clave]=temperaturaMax[clave]<temp?temp:temperaturaMax[clave]
-        temperaturaMin[clave]=temperaturaMin[clave]>temp?temp:temperaturaMin[clave]
+        lineasConError++
+        #printf("%s", mensajeSalida);
+        #Aca lo podemos printear o redirigir a un archivo tipo errores.log
     }
 }
 
@@ -72,7 +115,7 @@ END{
                     printf("\t\t\t%s\n", dir=="Este"?"}":"},") >>ruta
                 }
                 diaAct=dia
-                printf("\t\t%s\n", n==NR?"}":"},") >>ruta #Si es el ultimo archivo no tiene que meter una coma, si no es el ultimo si
+                printf("\t\t%s\n", n==(NR-lineasConError)?"}":"},") >>ruta #Si es el ultimo archivo no tiene que meter una coma, si no es el ultimo si
             }
             
         }
