@@ -1,21 +1,62 @@
 #!/bin/bash
 
+##---------------------------------------FUNCIONES---------------------------------------
 function ayuda() {
-    echo "Esta es la ayuda del script."
+    echo "Esta es la ayuda del script del ejercicio 1 de la APL 1."
 }
 
-options=$(getopt -o d:a:h:p --l help,pantalla,directorio:,archivo: -- "$@" 2> /dev/null)
-if [ "$?" != "0" ] # equivale a:  if test "$?" != "0"
+
+function validaciones()
+{
+    #$1 = directorio
+    #$2 = archivo
+    #$3 = pantalla
+    if [[ "$2" = "" &&  "$3" = "" ]]; then
+    echo "No se cargó un archivo de salida o salida por pantalla"
+    exit 4
+fi
+
+if [[ ! -s "$1" ]]; then
+    echo "El directorio no existe o tiene un tamaño de 0 bytes"
+    exit 1
+fi
+
+if [[ ! "$1" == *.csv ]]; 
+then
+    echo "El directorio no es del tipo CSV (Valores separados por comas)"
+    exit 2
+fi
+
+if [[ "$1" == *.*.* ]]; 
+then
+    echo "El directorio contiene doble extension"
+    exit 3
+fi
+
+if [[ "$2" != "" &&  "$3" != "" ]]; then
+    echo "Solo se puede mostrar la salida por archivo o por pantalla"
+    exit 4
+fi
+
+#validacionDeRutaDeSalida=`ls "$archivo"`
+#Falta hacer una validacion de si el pathing de salida que ingresa el usuario existe, sea relativo, absoluto o tenga espacios
+
+}
+
+##---------------------------------------"GETOPT"---------------------------------------
+
+options=$(getopt -o d:a:hp --l help,pantalla,directorio:,archivo: -- "$@" 2> /dev/null)
+if [ "$?" != "0" ] 
 then
     echo 'Opciones incorrectas'
     exit 1
 fi
-
 eval set -- "$options"
 while true
 do
-    case "$1" in # switch ($1) { 
-        -d | --directorio) # case "-e":
+    case "$1" in
+        -d | --directorio) 
+            
             directorio="$2"
             shift 2
 
@@ -27,9 +68,9 @@ do
             
             echo "El parámetro -a o --archivo tiene el valor $archivo"
             ;;
-        -p | --archivo)
-            archivo="$2"
-            shift 2
+        -p | --pantalla)
+            pantalla="true"
+            shift 
             
             echo "Se selecciono el parámetro -p o --pantalla"
             ;;            
@@ -37,13 +78,23 @@ do
             ayuda
             exit 0
             ;;
-        --) # case "--":
+        --)
             shift
             break
             ;;
-        *) # default: 
+        *) 
             echo "error"
             exit 1
             ;;
     esac
 done
+
+#Realizamos todas las validaciones de los datos
+validaciones $directorio $archivo $pantalla
+
+##---------------------------------------RESOLUCION---------------------------------------
+
+echo "Salida exitosa, yendo al awk"
+exit 0
+
+#Falta realizar la resolucion, hasta ahora solo chequeamos que todos los parámetros sean correctos
