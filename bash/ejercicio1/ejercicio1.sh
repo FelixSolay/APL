@@ -5,6 +5,17 @@ function ayuda() {
     echo "Esta es la ayuda del script del ejercicio 1 de la APL 1."
 }
 
+#Valida el JSON sin imprimirlo en pantalla
+function validarJSON()
+{
+    if jq empty $1 > /dev/null 2>&1; then
+        echo "El JSON es válido"
+    else
+        echo "El JSON es inválido"
+        exit 1
+fi
+
+}
 
 function validaciones()
 {
@@ -13,29 +24,29 @@ function validaciones()
     #$3 = pantalla
     if [[ "$2" = "" &&  "$3" = "" ]]; then
     echo "No se cargó un archivo de salida o salida por pantalla"
-    exit 4
+    exit 1
 fi
 
 if [[ ! -s "$1" ]]; then
     echo "El directorio no existe o tiene un tamaño de 0 bytes"
-    exit 1
+    exit 2
 fi
 
 if [[ ! "$1" == *.csv ]]; 
 then
     echo "El directorio no es del tipo CSV (Valores separados por comas)"
-    exit 2
+    exit 3
 fi
 
 if [[ "$1" == *.*.* ]]; 
 then
     echo "El directorio contiene doble extension"
-    exit 3
+    exit 4
 fi
 
 if [[ "$2" != "" &&  "$3" != "" ]]; then
     echo "Solo se puede mostrar la salida por archivo o por pantalla"
-    exit 4
+    exit 5
 fi
 
 #validacionDeRutaDeSalida=`ls "$archivo"`
@@ -94,7 +105,19 @@ validaciones $directorio $archivo $pantalla
 
 ##---------------------------------------RESOLUCION---------------------------------------
 
+
+
 echo "Salida exitosa, yendo al awk"
+
+#aca iria una funcion que me diga si va el pathing a un archivo o se muestra por pantalla
+
+awk -F, -v ruta="$archivo" -f script.awk "$directorio"
+
+
+
+validarJSON $archivo
+
+
+
 exit 0
 
-#Falta realizar la resolucion, hasta ahora solo chequeamos que todos los parámetros sean correctos

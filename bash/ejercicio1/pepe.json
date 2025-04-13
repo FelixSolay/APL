@@ -1,0 +1,48 @@
+{
+	"fechas":{
+		"2025/04/02": {
+			"Sur": {
+				"Min": 0,
+				"Max": 5,
+				"Promedio": 3
+			},
+			"Oeste": {
+				"Min": -5,
+				"Max": -5,
+				"Promedio": -5
+			},
+			"Norte": {
+				"Min": 10,
+				"Max": 10,
+				"Promedio": 10
+			},
+			"Este": {
+				"Min": 22,
+				"Max": 100,
+				"Promedio": 61
+			}
+		},
+		"2025/04/01": {
+			"Sur": {
+				"Min": 0,
+				"Max": 0,
+				"Promedio": 0
+			},
+			"Oeste": {
+				"Min": 0,
+				"Max": 0,
+				"Promedio": 0
+			},
+			"Norte": {
+				"Min": 15,
+				"Max": 15,
+				"Promedio": 15
+			},
+			"Este": {
+				"Min": 0,
+				"Max": 0,
+				"Promedio": 0
+			}
+		}
+	}
+}
