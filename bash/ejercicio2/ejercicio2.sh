@@ -37,7 +37,7 @@ function validaciones(){
         echo "El caracter separador no puede estar vacio, ser un numero o el signo -"
         exit 6
     fi
-    if [[ ${#4} -gt 1 ]];then
+    if [[ ${#4} -gt 1 ]];then #funciona como un strlen de $4
         echo "El caracter separador solo puede ser un único caracter"
         exit 7
     fi
@@ -45,6 +45,11 @@ function validaciones(){
     if [[ $aux == "" ]];then
         echo "El separador $4 no aparece en el archivo provisto en el parámetro -m o --matriz"
         exit 8
+    fi
+
+    if [[ ! "$2" =~  ^([-]?[0-9]+|[-]?[0-9]+\.[0-9]+)$ ]];then
+        echo "El valor para el producto escalar solamente puede ser numerico."
+        exit 9
     fi
 
 }
@@ -108,12 +113,10 @@ validaciones "$matriz" "$productoEscalar" "$trasponer" "$separador"
 #Falta validar el pathing, podria ir simplemente en las validaciones pero lo dejo como cosa aparte para validarlo
 if [[ $productoEscalar == "" ]];
 then
-    opcion=trasponer
+    opcion="trasponer"
 else 
     opcion=$productoEscalar;
 fi
-
-echo $opcion
 
 #obtenerRutaSalida
 #Dejo esta funcion como pendiente, es para obtener la ruta de salida donde se va a mostrar la matriz

@@ -1,5 +1,7 @@
 BEGIN{
-    printf("opcion: %s\n", opcion)
+    if(opcion=="trasponer")
+        printf("Seleccionaste trasponer la matriz\n")
+    else printf("Seleccionaste multiplicar por el escalar %d\n", opcion)
 }
 NR<2{
     columnas= NF
@@ -15,16 +17,17 @@ NR<2{
 
     for(i=1; i<=columnas; i++)
         {
-            fallo++
-            if( $i !~ /^[-]?[0-9]+$/)
+            
+            if( $i !~ /^([-]?[0-9]+|[-]?[0-9]+\.[0-9]+)$/)
             {
+                fallo++
                 print "Los valores que contiene la matriz no son numericos"
                 exit 1
             }
         }
 
     if(opcion == "trasponer") #Trasponer
-    {
+    { 
         for(i=1; i<=columnas; i++)
             matriz[i]= matriz[i] " " $i;
     }
@@ -36,8 +39,8 @@ NR<2{
 }
 
 END{
-    
-    if(fallo == 0)
+   
+    if(fallo == 0) #Esto es necesario porque aun con exit ejecuta el bloque END
     {
         printf("") > ruta
         for(i=1; i<=columnas; i++)
