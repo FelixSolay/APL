@@ -77,6 +77,8 @@ done
 
 validaciones $directorio $archivo $palabra
 
+#IFS: Internal field separator, en este caso separa por comas. -r le dice que no interprete los \ como caracteres de escape. -a le dice que el contenido va 
+# a ser guardado en un array llamado archivos. <<< "$archivo" le indica de donde viene el input de datos
 IFS=',' read -r -a archivos <<< "$archivo"
 num=0
 while [[ num -lt ${#archivos[@]} ]]
