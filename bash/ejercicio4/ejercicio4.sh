@@ -84,26 +84,17 @@ done
 
 validaciones $directorio $salida $cantidad $kill
 
-# archivo=`ls $directorio`
-# echo $archivo
+#archivo=`find "$directorio" -maxdepth 1 -type f ` 
+#No se puede hacer con find porque necesitamos que las rutas con espacios sean un solo elemento del array
+mapfile -t archivos < <(find $directorio -maxdepth 1 -type f) #el maxdepth es para que no siga buscando adentro de las carpetas el find
 
-IFS='.' read -r -a archivos <<< "$archivo"
-
-
-
-echo "pruebas en 0 "${archivos[0]}
-echo "pruebas en 1 "${archivos[1]}
 num=0
 while [[ num -lt ${#archivos[@]} ]]
 do
-    numAux=$(( num + 1 ))
-    prueba=$(find $directorio -name "${archivos[numAux]}" -type d)
-     echo $prueba
-    if [[ "$prueba" == "" ]];then
-        `mkdir -p "$directorio"\/"${archivos[numAux]}"`
-    fi
-    `mv "$directorio"\/"${archivos[num]}"."${archivos[numAux]}" -t "$directorio"\/"${archivos[numAux]}"`
-    echo "mv "$directorio"\/"${archivos[num]}"."${archivos[numAux]}" -t "$directorio"\/"${archivos[numAux]}""
-    echo $prueba
-    (( num += 2 ))
+    IFS='.' read -r -a archivoActual <<< "${archivos[num]}" #El array archivoActual tiene en su posicion 1 el pathing y en el 2 la extension
+    (( num += 1 ))
+    prueba=$(find $directorio -name "${archivoActual[2]}" -type d)
+    `mkdir -p "$directorio"\/"${archivoActual[2]}"` #con el -p, mkdir no tira un error si la carpeta ya existe por lo que no necesito validar
+
+    `mv ".${archivoActual[1]}"."${archivoActual[2]}" -t "$directorio"\/"${archivoActual[2]}"` #mueve el archivo actual al directorio indicado con -t, sin el -t solo cambia el nombre
 done
