@@ -2,7 +2,33 @@
 
 ##---------------------------------------FUNCIONES---------------------------------------
 function ayuda() {
-    echo "Esta es la ayuda del script del ejercicio 1 de la APL 1."
+    cat << EOF
+───────────────────────────────────────────────
+ Ayuda - Script del ejercicio 1 de la APL 1
+───────────────────────────────────────────────
+
+ Objetivo:
+  Lee un archivo CSV con registros de temperaturas en distintas ubicaciones.
+  Procesa la información y genera una salida en formato JSON con:
+    • Promedios
+    • Máximos
+    • Mínimos
+  agrupados por fecha y ubicación.
+
+ Parámetros:
+  -h, --help           Muestra esta ayuda
+  -d, --directorio     Ruta del directorio con el archivo CSV de entrada
+  -a, --archivo        Ruta del archivo JSON de salida
+  -p, --pantalla       Muestra el resultado por pantalla
+
+ Aclaraciones:
+  No se pueden usar simultáneamente -a|--archivo y -p|--pantalla.
+  Se debe elegir uno u otro.
+
+Ejemplo de uso:
+  ./ejercicio1.sh -d ./pruebas_normales.csv -a ./salida.json
+
+EOF
 }
 
 #Valida el JSON sin imprimirlo en pantalla
@@ -13,45 +39,41 @@ function validarJSON()
     else
         echo "El JSON es inválido"
         exit 1
-fi
-
+    fi
 }
 
 function validaciones()
 {
-    #$1 = directorio
-    #$2 = archivo
-    #$3 = pantalla
-    if [[ "$2" = "" &&  "$3" = "" ]]; then
-    echo "No se cargó un archivo de salida o salida por pantalla"
-    exit 1
-fi
+    local directorio="$1"
+    local archivo="$2"
+    local pantalla="$3"
 
-if [[ ! -s "$1" ]]; then
-    echo "El directorio no existe o tiene un tamaño de 0 bytes"
-    exit 2
-fi
+    if [[ -z "$archivo" && -z "$pantalla" ]]; then
+        echo "No se cargó un archivo de salida ni se pidió mostrar por pantalla"
+        exit 1
+    fi
 
-if [[ ! "$1" == *.csv ]]; 
-then
-    echo "El directorio no es del tipo CSV (Valores separados por comas)"
-    exit 3
-fi
+    if [[ ! -s "$directorio" ]]; then
+        echo "El archivo no existe o está vacío"
+        exit 2
+    fi
 
-if [[ "$1" == *.*.* ]]; 
-then
-    echo "El directorio contiene doble extension"
-    exit 4
-fi
+    if [[ "${directorio##*.}" != "csv" ]]; then
+        echo "El archivo no es del tipo CSV (Valores separados por comas)"
+        exit 3
+    fi
 
-if [[ "$2" != "" &&  "$3" != "" ]]; then
-    echo "Solo se puede mostrar la salida por archivo o por pantalla"
-    exit 5
-fi
+    if [[ $(basename "$directorio" | grep -o "\." | wc -l) -gt 1 ]]; then
+        echo "El archivo tiene una doble extensión"
+        exit 4
+    fi
 
-#validacionDeRutaDeSalida=`ls "$archivo"`
-#Falta hacer una validacion de si el pathing de salida que ingresa el usuario existe, sea relativo, absoluto o tenga espacios
-
+    if [[ -n "$archivo" && "$pantalla" == "true" ]]; then
+        echo "Solo se puede mostrar la salida por archivo o por pantalla, no ambos"
+        exit 5
+    fi
+    #validacionDeRutaDeSalida=`ls "$archivo"`
+    #Falta hacer una validacion de si el pathing de salida que ingresa el usuario existe, sea relativo, absoluto o tenga espacios
 }
 
 ##---------------------------------------"GETOPT"---------------------------------------
@@ -105,17 +127,16 @@ validaciones $directorio $archivo $pantalla
 
 ##---------------------------------------RESOLUCION---------------------------------------
 
-
-
 echo "Salida exitosa, yendo al awk"
 
 #aca iria una funcion que me diga si va el pathing a un archivo o se muestra por pantalla
-
-awk -F, -v ruta="$archivo" -f script.awk "$directorio"
-
-
-
-validarJSON $archivo
+#validar el JSON si se eligió archivo y no pantalla
+if [[ "$pantalla" == "true" ]]; then
+    awk -F, -v ruta="/dev/stdout" -f script.awk "$directorio"
+else
+    awk -F, -v ruta="$archivo" -f script.awk "$directorio"
+    validarJSON "$archivo"
+fi
 
 
 
