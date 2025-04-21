@@ -35,9 +35,9 @@ EOF
 function validarJSON()
 {
     if jq empty $1 > /dev/null 2>&1; then
-        echo "El JSON es válido"
+        echo "El JSON es válido." 
     else
-        echo "El JSON es inválido"
+        echo "El JSON es inválido."
         exit 1
     fi
 }
@@ -93,19 +93,19 @@ do
             directorio="$2"
             shift 2
 
-            echo "El parámetro -d o --directorio tiene el valor $directorio"
+#            echo "El parámetro -d o --directorio tiene el valor $directorio"
             ;;
         -a | --archivo)
             archivo="$2"
             shift 2
             
-            echo "El parámetro -a o --archivo tiene el valor $archivo"
+#            echo "El parámetro -a o --archivo tiene el valor $archivo"
             ;;
         -p | --pantalla)
             pantalla="true"
             shift 
             
-            echo "Se selecciono el parámetro -p o --pantalla"
+#            echo "Se selecciono el parámetro -p o --pantalla"
             ;;            
         -h | --help)
             ayuda
@@ -127,7 +127,7 @@ validaciones $directorio $archivo $pantalla
 
 ##---------------------------------------RESOLUCION---------------------------------------
 
-echo "Salida exitosa, yendo al awk"
+echo "Procesando AWK..."
 
 #aca iria una funcion que me diga si va el pathing a un archivo o se muestra por pantalla
 #validar el JSON si se eligió archivo y no pantalla

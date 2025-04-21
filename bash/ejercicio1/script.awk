@@ -51,6 +51,7 @@ function validarParametros(id, fecha, hora, direccion, temp)
         cantApariciones[clave]++
         suma[clave]+=temp
 
+
         #Inicializo las temperaturas si no fueron cargadas, sino actualizo la mayor y menor
         if(! (clave in temperaturaMin))
         {
@@ -79,50 +80,76 @@ END{
     if(ruta=="/dev/stdout")
     {
         for (clave in temperaturaMin)
-    {
-        split(clave,partes, SUBSEP); 
-        dia=partes[1] #Aca guarda el dia
-        dir=partes[2] #Aca guarda la hora
-        printf("Dia: %s, direccion: %s, minima: %.2f, maxima: %.2f, promedio: %.2f\n", dia,dir, temperaturaMin[clave],temperaturaMax[clave], suma[clave]/cantApariciones[clave] )
-    }
+        {
+            split(clave,partes, SUBSEP); 
+            dia=partes[1] #Aca guarda el dia
+            dir=partes[2] #Aca guarda la hora
+            printf("Dia: %s, direccion: %s, minima: %.2f, maxima: %.2f, promedio: %.2f\n", dia,dir, temperaturaMin[clave],temperaturaMax[clave], suma[clave]/cantApariciones[clave] )
+        }
     }
     else
     {
-        #Necesito iterar alrededor de la clave compuesta. No encontre mejor forma de hacer esto sin reescribir todo el codigo
-        vectorDirecciones["Sur"]++
-        vectorDirecciones["Norte"]++
-        vectorDirecciones["Este"]++
-        vectorDirecciones["Oeste"]++
-        n=0; #Necesitamos un contador para determinar cuando lleguemos al ultimo elemento porque no lleva ,
-         print "{" > ruta # >ruta vendria a ser como un w en c, si no existe lo crea y si existe lo sobreescrie
-         printf("\t\"fechas\":{\n") >> ruta #>>ruta seria como un append, le suma al final del archivo
-         for (clave in temperaturaMin)
-        {                      
-            split(clave,partes, SUBSEP);
-            dia=partes[1]
+        #Mi idea es armar un array de días distintos, luego iterar sobre el mismo en las 4 direcciones posibles (Norte, Sur, Este y Oeste)
+        vectorDirecciones["Sur"] = 1 
+        vectorDirecciones["Norte"] = 1
+        vectorDirecciones["Este"] = 1
+        vectorDirecciones["Oeste"] = 1
 
-            if(diaAct!=dia)
+        #1° iteración: armo un array de días distintos para iterar S N E O
+        for (clave in temperaturaMin)
+        {
+            split(clave,partes, SUBSEP);
+            dia=partes[1] #Aca guarda el dia
+            if(! (dia in diasDistintos))
             {
-                n+=4; 
-                 printf("\t\t\"%s\": {\n", dia) >>ruta
-                for(dir in vectorDirecciones)
-                {
-                    printf("\t\t\t\"%s\": {\n", dir) >>ruta
-                    clave = dia SUBSEP dir
-                    printf("\t\t\t\t\"Min\": %d,\n", temperaturaMin[clave]) >>ruta
-                    printf("\t\t\t\t\"Max\": %d,\n", temperaturaMax[clave]) >>ruta
-                    printf("\t\t\t\t\"Promedio\": %d\n", cantApariciones[clave]==0?0:suma[clave]/cantApariciones[clave]) >>ruta
-                    printf("\t\t\t%s\n", dir=="Este"?"}":"},") >>ruta
-                }
-                diaAct=dia
-                printf("\t\t%s\n", n==(NR-lineasConError)?"}":"},") >>ruta #Si es el ultimo archivo no tiene que meter una coma, si no es el ultimo si
+                #Prende la bandera en la clave para ese dia
+                diasDistintos[dia] = 1
+                #agrego 1 día distinto a la cantidad total de días
+                totalDias++
             }
-            
+        }
+
+        print "{" > ruta # >ruta vendria a ser como un w en c, si no existe lo crea y si existe lo sobreescrie
+        printf("\t\"fechas\":{\n") >> ruta #>>ruta seria como un append, le suma al final del archivo
+
+        # Voy a utilizar los indices I y J para poner o no las ","
+        i = 0
+        for (dia in diasDistintos) #por cada día reviso SNEO
+        {
+            i++
+            diaFormateado = dia
+            gsub("/", "-", diaFormateado)
+            printf("\t\t\"%s\": {\n", diaFormateado) >> ruta
+            j = 0
+            totalDirs = 0
+
+            # Primero cuento cuántas direcciones válidas hay
+            for (dir in vectorDirecciones) {
+                clave = dia SUBSEP dir
+                if (clave in cantApariciones && cantApariciones[clave] > 0) {
+                    totalDirs++
+                }
+            }            
+            # Ahora imprimo solo esas direcciones válidas
+            for (dir in vectorDirecciones) {
+                clave = dia SUBSEP dir
+                if (clave in cantApariciones && cantApariciones[clave] > 0) {
+                    j++
+                    printf("\t\t\t\"%s\": {\n", dir) >> ruta
+                    printf("\t\t\t\t\"Min\": %.2f,\n", temperaturaMin[clave]) >> ruta
+                    printf("\t\t\t\t\"Max\": %.2f,\n", temperaturaMax[clave]) >> ruta
+                    printf("\t\t\t\t\"Promedio\": %.2f\n", suma[clave] / cantApariciones[clave]) >> ruta
+                    printf("\t\t\t}%s\n", (j == totalDirs ? "" : ",")) >> ruta
+                }
+            }
+            printf("\t\t}%s\n", (i == totalDias ? "" : ",")) >> ruta
         }
          
-         printf("\t}\n") >> ruta
-         printf("}\n") >> ruta
+        printf("\t}\n") >> ruta
+        printf("}\n") >> ruta
     }
+
+    print "Procesamiento de Datos Finalizado."
 }
 
 
