@@ -74,7 +74,7 @@ function validarParametros(id, fecha, hora, direccion, temp)
 
 END{
 
-    PROCINFO["sorted_in"] = "@ind_str_desc"  #Esta sola funcion reemplaza a todo el ordenamiento que hariamos normalmente
+    PROCINFO["sorted_in"] = "@ind_str_asc"  #Esta sola funcion reemplaza a todo el ordenamiento que hariamos normalmente
     
     #True es el valor por defecto que le asignamos a la salida por pantalla
     if(ruta=="/dev/stdout")
