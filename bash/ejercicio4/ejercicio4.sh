@@ -2,7 +2,35 @@
 
 #./ejercicio4.sh -d ./descargas -s ./backup -c 4 -k
 function ayuda() {
-    echo "Esta es la ayuda del script del ejercicio 4 de la APL 1."
+    cat << EOF
+───────────────────────────────────────────────
+ Ayuda - Script del ejercicio 4 de la APL 1
+───────────────────────────────────────────────
+
+ Objetivo:
+    Demonio que detecta cada vez que un archivo nuevo aparece en un directorio
+    “descargas”. Una vez detectado, se mueve a un subdirectorio “extensión” cuyo nombre será la
+    extensión del archivo y que estará localizado en un directorio “destino”
+    Además cada cierta cantidad de archivos realizará un backup con el nobre del directorio respaldado
+    junto con la fecha y hora (yyyyMMdd-HHmmss), 
+    Ejemplo: descargas_20250401_212121.zip.
+
+ Parámetros:
+  -h, --help           Muestra esta ayuda
+  -d, --directorio     Ruta del directorio a monitorear
+  -s, --salida         Ruta del directorio en donde se van a crear los backups
+  -k, --kill           Flag que indica que el script debe detener el demonio iniciado
+  -c, --cantidad       antidad de archivos a ordenar antes de generar un backup
+
+ Aclaraciones:
+  El parámetro -k o --kill se debe utilizar únicamente junto con -d o --directorio
+
+
+Ejemplos de uso:
+  $ ./demonio.sh -d ../descargas --backup ../backup -c 3
+  $ ./demonio.sh -d ../documentos --backup ../backup --cantidad 3
+
+EOF
 }
 
 function validaciones(){
