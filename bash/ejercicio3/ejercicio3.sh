@@ -8,26 +8,54 @@ function ayuda() {
     echo "./ejercicio3.sh -d /ruta/al/directorio --archivo txt,sh -p for,else"
 }
 
+function ayuda() {
+    cat << EOF
+───────────────────────────────────────────────
+ Ayuda - Script del ejercicio 3 de la APL 1
+───────────────────────────────────────────────
+
+ Objetivo:
+  identificar la cantidad de ocurrencias de determinadas palabras en determinados
+archivos dentro de un directorio (incluyendo los subdirectorios).
+
+Ingresar un directorio base, las extensiones de archivos (csv, txt por ejemplo) sin 
+puntos ni espacios y separadas por comas y por último las palabras que estés buscando, 
+tambien entre comas y sin espacios
+
+ Parámetros:
+  -h, --help           Muestra esta ayuda
+  -d, --directorio     Ruta del directorio a analizar
+  -p, --palabras       Lista de palabras a contabilizar
+  -a, --archivos       Lista de extensiones de archivos a buscar
+
+Ejemplo de uso: buscando unicamente en /ruta las palabras for y else en las extensiones txt y sh
+  ./ejercicio3.sh -d /ruta/al/directorio --archivo txt,sh -p for,else
+
+EOF
+}
+
+
 function validaciones(){
     #$1 = directorio
     #$2 = archivos
     #$3 = palabras
 
-    if [[ ! -d $1 ]];then
+    if [[ ! -d "$1" ]];then
         echo "El directorio especificado no existe. Revisa haber escrito bien la ruta"
         exit 1
     fi
 
-    if [[ $2 == "" ]];then
+    if [[ -z "$2" ]];then
         echo "No se cargaron extensiones para buscar"
         exit 2
     fi
 
-    if [[ $3 == "" ]];then
+    if [[ -z "$3" ]];then
         echo "No se cargaron palabras para buscar"
         exit 3
     fi
 }
+##---------------------------------------"GETOPT"---------------------------------------
 
 options=$(getopt -o d:p:a:h --long help,directorio:,palabras:,archivos: -- "$@" 2> /dev/null)
 if [ "$?" != "0" ] 
@@ -44,13 +72,13 @@ do
             directorio="$2"
             shift 2
 
-            echo "El parámetro -d o --directorio tiene el valor $directorio"
+            #echo "El parámetro -d o --directorio tiene el valor $directorio"
             ;;
         -p | --palabras)
             palabra="$2"
             shift 2
             
-            echo "El parámetro -p o --palabras tiene el valor $palabra"
+            #echo "El parámetro -p o --palabras tiene el valor $palabra"
             ;;
         
         -a | --archivos)
@@ -58,7 +86,7 @@ do
             archivo="$2"
             shift 2
             
-            echo "El parámetro -a o --archivos tiene el valor $archivo"
+            #echo "El parámetro -a o --archivos tiene el valor $archivo"
             ;;         
         -h | --help)
             ayuda
