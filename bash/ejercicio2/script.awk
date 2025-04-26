@@ -29,12 +29,12 @@ NR<2{
     if(opcion == "trasponer") #Trasponer
     { 
         for(i=1; i<=columnas; i++)
-            matriz[i]= matriz[i] " " $i;
+            matriz[i]= matriz[i] separador $i;
     }
     else #Producto escalar
     {
         for(i=1; i<=columnas; i++)
-            matriz[NR]= matriz[NR] " " $i * opcion;
+            matriz[NR]= matriz[NR] separador $i * opcion;
     }
 }
 
@@ -45,5 +45,7 @@ END{
         printf("") > ruta
         for(i=1; i<=columnas; i++)
             printf("%s\n", matriz[i]) >> ruta
+
+        printf("La ruta de salida donde se encuentra la matriz es: %s\n", ruta)
     }
 }
