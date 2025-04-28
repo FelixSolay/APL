@@ -27,36 +27,55 @@ function ayuda() {
 
 
 Ejemplos de uso:
-  $ ./demonio.sh -d ../descargas --backup ../backup -c 3
-  $ ./demonio.sh -d ../documentos --backup ../backup --cantidad 3
+  $ ./demonio.sh -d ../descargas --salida ../backup -c 3
+  $ ./demonio.sh -d ../documentos --salida ../backup --cantidad 3
 
 EOF
 }
 
 function validaciones(){
-    #$1 = directorio
-    #$2 = salida
-    #$3 = cantidad
-    #$4 = kill
+    local directorio="$1"
+    local salida="$2"
+    local cantidad="$3"
+    local kill="$4"
 
-    if [[ ! -d $1 ]];then
+    #siempre tiene que haber un directorio en -d ($1), ya sea con kill o no
+    if [[ -z "$directorio" ]];then
+        echo "ERROR: Debe especificar un directorio con -d o --directorio."
+        exit 1
+    fi
+    
+    if [[ ! -d "$directorio" ]];then
         echo "El directorio especificado no existe. Revisa haber escrito bien la ruta"
-        #exit 1
+        exit 2
     fi
+    
+    # Si es un kill, no validar salida ni cantidad
+#    echo "DEBUG: entré en validaciones con el parámetro 4 con valor: $kill" 
+    if [[ "$kill" == "true" ]]; then
+#        echo "DEBUG: deberia ignorar las otras validaciones porque me tiraste un kill"
+        return
+    fi    
 
-    if [[ ! -d $2 ]];then
+    #si no salió con kill debe especificar una salida
+    if [[ -z "$salida" ]]; then
+        echo "ERROR: Debe especificar un directorio de salida con -s o --salida."
+        exit 3
+    fi
+    #Y una cantidad
+    if [[ -z "$cantidad" ]]; then
+        echo "ERROR: Debe especificar una cantidad de archivos a ordenar antes de generar un backup con -c o --cantidad."
+        exit 4
+    fi    
+
+    if [[ ! -d "$salida" ]];then
         echo "El directorio de salida especificado no existe. Revisa haber escrito bien la ruta"
-       # exit 1
+        exit 5
     fi
 
-    if [[ ! $3 =~ ^[0-9]+$ ]];then
+    if [[ ! $cantidad =~ ^[0-9]+$ ]];then
         echo "El parametro cantidad solo puede ser un numero entero positivo"
-       # exit 2
-    fi
-
-    if [[ $4 == "" ]];then
-        echo "El parametro kill debe ir acompañado del parametro directorio"
-        #exit 3
+        exit 6
     fi
 }
 
@@ -145,7 +164,12 @@ do
     esac
 done
 
-validaciones $directorio $salida $cantidad $kill
+#directorio=${directorio:-""}
+#salida=${salida:-""}
+#cantidad=${cantidad:-""}
+#kill=${kill:-"false"}
+
+validaciones "$directorio" "$salida" "$cantidad" "$kill"
 
 #validarKill $kill
 
