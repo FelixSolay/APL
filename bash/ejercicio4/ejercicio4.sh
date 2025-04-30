@@ -1,6 +1,9 @@
 #!/bin/bash
 
 #./ejercicio4.sh -d ./descargas -s ./backup -c 4 -k
+#librerias necesarias: zip, inotify-tools 
+#sudo apt-get install inotify-tools
+
 function ayuda() {
     cat << EOF
 ───────────────────────────────────────────────
@@ -29,6 +32,10 @@ function ayuda() {
 Ejemplos de uso:
   $ ./demonio.sh -d ../descargas --salida ../backup -c 3
   $ ./demonio.sh -d ../documentos --salida ../backup --cantidad 3
+
+Aclaraciones:
+  Debido al uso de inotify-tools, si estás usando un WSL solamente va a poder detectar los cambios que hagas fuera de linux si estas en el directorio home.
+  Si haces por ejemplo touch /tu/ruta/archivo.txt lo va a ordenar efectivamente, pero si la creas desde Visual Studio Code no la va a detectar a menos que estés en el directorio home.
 
 EOF
 }
@@ -78,15 +85,11 @@ function validaciones(){
         exit 6
     fi
 
-    if [[ ! $cantidad =~ ^[0-9]+$ ]];then
-        echo "El parametro cantidad solo puede ser un numero entero positivo"
-        exit 6
-    fi
-    #Para este punto tanto backup como salida ya existen
-    #Transformo ambos a ruta absoluta con realpath. Realpath resuelve todos los enlaces simbolicos y me lleva a la ruta real de los directorios.
-    directorio=$(realpath "$directorio");
-    salida=$(realpath "$salida");
 
+}
+function validarKill(){
+    local directorio="$1"
+    local kill="$2"
     #Validar si otro proceso esta corriendo en el mismo directorio
     if [[ $kill = "false" ]];then
     for pid in $(ps -eo pid --no-headers); do #obtiene un iterable de todos los pid solo con el numero, sin headers
@@ -97,15 +100,16 @@ function validaciones(){
         fi
     done
     fi
+
 }
 
-function ordenarArchivosPorExtension(){
+function ordenarArchivosPorExtension() {
+    #Primero tiene que hacer un barrido inicial y despues se queda escuchando
     cd "$directorio" || { echo "No se pudo cambiar de directorio"; exit 1; }
-    cantidadArchivosOrdenados=0;
-   while true;do
-        #archivo=`find "$directorio" -maxdepth 1 -type f ` 
-        #No se puede hacer con find porque necesitamos que las rutas con espacios sean un solo elemento del array
-        mapfile -t archivos < <(find "$directorio" -maxdepth 1 -type f) #el maxdepth es para que no siga buscando adentro de las carpetas el find
+
+    cantidadArchivosOrdenados=0
+
+    mapfile -t archivos < <(find "$directorio" -maxdepth 1 -type f) #el maxdepth es para que no siga buscando adentro de las carpetas el find
         #echo "el mapfile: ${archivos[@]} "
         #echo "el mapfile tiene ${#archivos[@]} archivos "
         num=0
@@ -129,7 +133,30 @@ function ordenarArchivosPorExtension(){
                 cantidadArchivosOrdenados=0;
             fi
         done
-        sleep 10
+
+    inotifywait -m -e create -e moved_to -e close_write -e modify -e attrib --format "%w%f" "$directorio" | while read archivo
+    do
+        sleep 0.5 #Sin este sleep apenas pones el archivo lo mueve y vscode puede tirar un error. No es realmente necesario
+        if [[ -f "$archivo" ]]; then
+            nombreArchivo=$(basename "$archivo")
+            extension="${nombreArchivo##*.}"
+            
+            if [[ "$nombreArchivo" == "$extension" ]]; then
+                extension="sin_extension"
+            fi
+
+            mkdir -p "$directorio/$extension"
+            mv "$archivo" -t "$directorio/$extension/"
+            (( cantidadArchivosOrdenados++ ))
+
+            # Backup si se alcanzó el límite
+            if [[ $cantidadArchivosOrdenados -eq "$cantidad" ]]; then
+                nombre_dir=$(basename "$(pwd)")
+                fecha=$(date +"%Y%m%d_%H%M%S")
+                zip -r "$salida/${nombre_dir}_${fecha}.zip" . > /dev/null
+                cantidadArchivosOrdenados=0
+            fi
+        fi
     done
 }
 
@@ -140,7 +167,7 @@ function ordenarArchivosPorExtension(){
         dir=$(readlink -f /proc/$pid/cwd) #/proc/$pid/cwd devuelve una referencia al proceso. Con readlink podemos obtener su ruta absoluta para asi compararla
         if [[ "$dir" == "$directorio" ]]; then
             if [[ "$pid" -ne "$$" ]]; then #Verifico que mate a todos los procesos menos al proceso actual
-                #echo "Matando proceso $pid en $dir"
+                echo "Matando proceso $pid en $dir"
                 kill $pid
             fi
         fi
@@ -178,7 +205,7 @@ do
             cantidad="$2"
             shift 2
             
-            echo "El parámetro -c o --archivos tiene el valor $cantidad"
+            echo "El parámetro -c o --cantidad tiene el valor $cantidad"
             ;;         
         -h | --help)
             ayuda
@@ -207,7 +234,15 @@ done
 
 validaciones "$directorio" "$salida" "$cantidad" "$kill"
 
+#Para este punto sabemos que las rutas son validas y necesitamos manejar si o si direcciones absolutas, asi que las convertimos
+directorio=$(realpath "$directorio");
+salida=$(realpath "$salida");
+
+validarKill "$directorio" "$kill"
+
 matarProcesos "$kill"
+
+#pruebanotify & disown
 
 #El disown hace que el proceso se siga ejecutando en segundo plano y me libera la terminal
 ordenarArchivosPorExtension & disown
