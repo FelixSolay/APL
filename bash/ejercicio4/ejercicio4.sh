@@ -80,39 +80,52 @@ function validaciones(){
 }
 
 function ordenarArchivosPorExtension(){
-    while true;do
+    cd "$directorio" || { echo "No se pudo cambiar de directorio"; exit 1; }
+   while true;do
         #archivo=`find "$directorio" -maxdepth 1 -type f ` 
         #No se puede hacer con find porque necesitamos que las rutas con espacios sean un solo elemento del array
-        mapfile -t archivos < <(find $directorio -maxdepth 1 -type f) #el maxdepth es para que no siga buscando adentro de las carpetas el find
-
+        mapfile -t archivos < <(find "$directorio" -maxdepth 1 -type f) #el maxdepth es para que no siga buscando adentro de las carpetas el find
+        #echo "el mapfile: ${archivos[@]} "
         num=0
         while [[ num -lt ${#archivos[@]} ]]
         do
-            IFS='.' read -r -a archivoActual <<< "${archivos[num]}" #El array archivoActual tiene en su posicion 1 el pathing y en el 2 la extension
+            IFS='.' read -r -a archivoActual <<< "${archivos[num]}" #El array archivoActual tiene en su posicion 0 el pathing y en el 1 la extension
             (( num += 1 ))
-            prueba=$(find $directorio -name "${archivoActual[2]}" -type d)
-            `mkdir -p "$directorio"\/"${archivoActual[2]}"` #con el -p, mkdir no tira un error si la carpeta ya existe por lo que no necesito validar
+            #echo "en la posicion 1: ${archivoActual[0]}"
+            #echo "en la posicion 2: ${archivoActual[1]}"
+            #prueba=$(find "$directorio" -name "${archivoActual[1]}" -type d)
+            #echo "pesos prueba: $prueba"
+            `mkdir -p "$directorio"\/"${archivoActual[1]}"` #con el -p, mkdir no tira un error si la carpeta ya existe por lo que no necesito validar
 
-            `mv ".${archivoActual[1]}"."${archivoActual[2]}" -t "$directorio"\/"${archivoActual[2]}"` #mueve el archivo actual al directorio indicado con -t, sin el -t solo cambia el nombre
+            `mv "${archivoActual[0]}"."${archivoActual[1]}" -t "$directorio"\/"${archivoActual[1]}"` #mueve el archivo actual al directorio indicado con -t, sin el -t solo cambia el nombre
         done
-        sleep 10
+        sleep 100
     done
 }
 
-function validarKill(){
-    # Obtener el PID del proceso del script excluyendo el propio
-    validaProceso=$(pgrep -f "ejercicio4.sh" | grep -v $$)
-    echo $validaProceso
-    if [[ -z $validaProceso ]]; then
-        # Si no se encuentra el proceso, inicia el script en segundo plano
-        echo "El proceso no estaba iniciado, iniciando..."
+ function validarKill(){
+#     # Obtener el PID del proceso del script excluyendo el propio
+#     validaProceso=$(pgrep -f "ejercicio4.sh" | grep -v $$)
+#     echo $validaProceso
+#     if [[ -z $validaProceso ]]; then
+#         # Si no se encuentra el proceso, inicia el script en segundo plano
+#         echo "El proceso no estaba iniciado, iniciando..."
 
-    else
-        # Si se encuentra el proceso, lo mata
-        echo "El proceso ya está siendo ejecutado. Procediendo a matarlo..."
-        kill $validaProceso
+#     else
+#         # Si se encuentra el proceso, lo mata
+#         echo "El proceso ya está siendo ejecutado. Procediendo a matarlo..."
+#         kill $validaProceso
+#     fi
+    for pid in $(ps -eo pid --no-headers); do
+    if [ -d "/proc/$pid/cwd" ]; then
+        dir=$(readlink -f /proc/$pid/cwd)
+        if [[ "$dir" == "$directorio" ]]; then
+            cmd=$(ps -p $pid -o cmd --no-headers)
+            echo "PID $pid en $dir → $cmd"
+        fi
     fi
-}
+    done
+ }
 
 options=$(getopt -o d:s:khc: --long help,directorio:,salida:,cantidad:,kill -- "$@" 2> /dev/null)
 if [ "$?" != "0" ] 
@@ -173,9 +186,25 @@ validaciones "$directorio" "$salida" "$cantidad" "$kill"
 
 #validarKill $kill
 
+#Necesito que sea si o si una ruta absoluta
+if [[ "$directorio" = /* ]]; then
+    # Es ruta absoluta, no hacer nada
+    ruta_destino="$directorio"
+else
+    directorio="$(realpath "$directorio")" #basicamente transforma esta ruta relativa a una ruta absoluta
+    echo "el directorio es: $directorio"
+fi
+
+
+
+
+
 #El disown hace que el proceso se siga ejecutando en segundo plano y me libera la terminal
 ordenarArchivosPorExtension & disown
 
 
 
-
+# readlink -f /proc/pid/cwd 
+ #en pid pones el pid del proceso
+#./ejercicio4.sh -d ./descargas -s ./backup -c 4 -k
+#./ejercicio4.sh -d ./descargas2 -s ./backup -c 4 -k
