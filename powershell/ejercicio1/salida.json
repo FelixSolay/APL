@@ -1,0 +1,114 @@
+{
+  "fechas": {
+    "2025-04-02": {
+      "Oeste": {
+        "Min": -5.7,
+        "Promedio": 12.28,
+        "Max": 30.7
+      },
+      "Sur": {
+        "Min": -3.9,
+        "Promedio": 9.68,
+        "Max": 43.6
+      },
+      "Norte": {
+        "Min": -8.6,
+        "Promedio": 8.84,
+        "Max": 32.6
+      },
+      "Este": {
+        "Min": 2.7,
+        "Promedio": 16.04,
+        "Max": 27.0
+      }
+    },
+    "2025-04-03": {
+      "Oeste": {
+        "Min": 6.1,
+        "Promedio": 25.56,
+        "Max": 45.0
+      },
+      "Sur": {
+        "Min": -9.7,
+        "Promedio": 22.82,
+        "Max": 42.7
+      },
+      "Norte": {
+        "Min": -8.4,
+        "Promedio": 11.78,
+        "Max": 38.2
+      },
+      "Este": {
+        "Min": -4.8,
+        "Promedio": 15.72,
+        "Max": 29.7
+      }
+    },
+    "2025-04-05": {
+      "Oeste": {
+        "Min": -9.9,
+        "Promedio": 6.56,
+        "Max": 37.8
+      },
+      "Sur": {
+        "Min": -8.4,
+        "Promedio": 22.7,
+        "Max": 36.4
+      },
+      "Norte": {
+        "Min": -7.3,
+        "Promedio": 12.48,
+        "Max": 27.1
+      },
+      "Este": {
+        "Min": 1.0,
+        "Promedio": 15.36,
+        "Max": 35.7
+      }
+    },
+    "2025-04-01": {
+      "Oeste": {
+        "Min": 6.5,
+        "Promedio": 14.3,
+        "Max": 29.9
+      },
+      "Sur": {
+        "Min": 12.6,
+        "Promedio": 20.82,
+        "Max": 31.6
+      },
+      "Norte": {
+        "Min": 6.3,
+        "Promedio": 24.2,
+        "Max": 37.7
+      },
+      "Este": {
+        "Min": -6.3,
+        "Promedio": 6.82,
+        "Max": 21.9
+      }
+    },
+    "2025-04-04": {
+      "Oeste": {
+        "Min": -4.3,
+        "Promedio": 2.52,
+        "Max": 7.5
+      },
+      "Sur": {
+        "Min": -6.5,
+        "Promedio": 6.6,
+        "Max": 31.0
+      },
+      "Norte": {
+        "Min": 5.3,
+        "Promedio": 21.84,
+        "Max": 41.5
+      },
+      "Este": {
+        "Min": 1.0,
+        "Promedio": 21.48,
+        "Max": 32.8
+      }
+    }
+  }
+}

@@ -40,9 +40,7 @@ param(
     [Alias("h")][switch]$Help
 )
 
-
-
-function Validar-Parametros {
+function ValidarParametros {
     param(
         [string]$Directorio,
         [string]$Archivo,
@@ -76,7 +74,7 @@ function Validar-Parametros {
     }
 }
 
-function Validar-JSON {
+function ValidarJSON {
     param([string]$RutaArchivo)
     try {
         Get-Content -Raw -Path $RutaArchivo | ConvertFrom-Json | Out-Null
@@ -87,8 +85,7 @@ function Validar-JSON {
     }
 }
 
-
-function Procesar-CSV {
+function ProcesarCSV {
     param(
         [string]$RutaCSV,
         [string]$ArchivoSalida,
@@ -184,7 +181,7 @@ function Procesar-CSV {
     } else {
         $JSON = $Salida | ConvertTo-Json -Depth 5
         Set-Content -Path $ArchivoSalida -Value $JSON -Encoding UTF8
-        Validar-JSON -RutaArchivo $ArchivoSalida
+        ValidarJSON -RutaArchivo $ArchivoSalida
     }
 }
 
@@ -193,11 +190,6 @@ if ($Help) {
     Get-Help -Detailed $MyInvocation.MyCommand.Path
     exit 0
 }
-Validar-Parametros -Directorio $Directorio -Archivo $Archivo -Pantalla $Pantalla
-#$Resultados = Procesar-CSV -RutaCSV $Directorio
-#Generar-Salida -Datos $Resultados -ArchivoSalida $Archivo -Pantalla:$Pantalla
-Procesar-CSV -RutaCSV $Directorio -ArchivoSalida $Archivo -Pantalla:$Pantalla
-if (-not $Pantalla) {
-    Validar-JSON -RutaArchivo $Archivo
-}
+ValidarParametros -Directorio $Directorio -Archivo $Archivo -Pantalla $Pantalla
+ProcesarCSV -RutaCSV $Directorio -ArchivoSalida $Archivo -Pantalla:$Pantalla
 exit 0
