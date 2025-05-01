@@ -186,6 +186,7 @@ function ProcesarCSV {
 }
 
 
+# MAIN
 if ($Help) {
     Get-Help -Detailed $MyInvocation.MyCommand.Path
     exit 0
