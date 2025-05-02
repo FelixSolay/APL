@@ -33,7 +33,7 @@ Ejemplo de uso:
 
 EOF
 }
-
+#funciones
 function validacionesParam(){
 
     local id=$1
@@ -55,6 +55,7 @@ function validacionesId(){
     done
 }
 
+#Opciones
 options=$(getopt -o i:n:h --long id:,name:,help -- "$@" 2> /dev/null)
 if [ "$?" != "0" ] 
 then
@@ -102,6 +103,7 @@ declare -A cacheERROR
 apiFrutas="https://www.fruityvice.com/api/fruit/"
 cacheFile="./cacheFile.txt"
 
+#Se inicia o carga el cache
 if [ ! -f $cacheFile ]; then #Si el cacheFile no existe lo creo
     touch $cacheFile
 fi
@@ -112,17 +114,48 @@ if [ -s $cacheFile ]; then #Si el cacheFile no esta vacio cargo el array cacheJS
     done < $cacheFile
 fi
 
+#Se eliminan los repetidos
+idUnicos=()
+nameUnicos=()
+for elem in "${id[@]}"; do
+    if [[ ! " ${idUnicos[@]} " =~ " $elem " ]]; then
+        idUnicos+=("$elem")
+    fi
+done
+for elem in "${name[@]}"; do
+    if [[ ! " ${nameUnicos[@]} " =~ " $elem " ]]; then
+        nameUnicos+=("$elem")
+    fi
+done
+
 #formato de salida
 #jq '{id: .id, name: .name, genus: .genus, calories: .nutritions.calories, fat: .nutritions.fat, sugar: .nutritions.sugar, carbohydrates: .nutritions.carbohydrates, protein: .nutritions.protein}' 
 
-for i in "${id[@]}"; do
+for i in "${idUnicos[@]}"; do
     if [ -z ${cacheJSON["$i"]} ]; then
-        echo "hola"
         json=$(curl -s $apiFrutas$i)
-        echo $(echo $json | jq -r '.error')
-        if [[ "$(echo $json | jq -r '.error')" == "Not found" ]]; then
-            echo "hola"
+        if [ $? -eq 6 ]; then
+            cacheERROR["$i"]="Id $i: ERROR 6, No se pudo conectar a la API. Pruebe su conexion a internet"
+            continue
         fi
+        if [[ "$(echo $json | jq -r '.error')" == "Not found" ]]; then
+            cacheERROR["$i"]="Id $i: Id no encontrada o valida"
+            continue
+        fi
+        cacheJSON["$i"]=$json
+    fi
+    echo ${cacheJSON["$i"]} | jq -j '{id: .id, name: .name, genus: .genus, calories: .nutritions.calories, fat: .nutritions.fat, sugar: .nutritions.sugar, carbohydrates: .nutritions.carbohydrates, protein: .nutritions.protein}'
+
+    for((t = 0; t < ${#nameUnicos[@]} ; t++)); do
+        if [[ "$(echo ${cacheJSON["$i"]} | jq -r '.name')" == "${nameUnicos[$t]}" ]];then
+            nameUnicos[$t]=0
+        fi
+    done
+done
+
+for i in "${nameUnicos[@]}"; do
+    if [ $i != "0" ]; then
+        
     fi
 done
 
