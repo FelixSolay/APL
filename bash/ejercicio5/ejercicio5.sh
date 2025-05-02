@@ -128,9 +128,7 @@ for elem in "${name[@]}"; do
     fi
 done
 
-#formato de salida
-#jq '{id: .id, name: .name, genus: .genus, calories: .nutritions.calories, fat: .nutritions.fat, sugar: .nutritions.sugar, carbohydrates: .nutritions.carbohydrates, protein: .nutritions.protein}' 
-
+#me fijo por el parametro Id
 for i in "${idUnicos[@]}"; do
     if [ -z ${cacheJSON["$i"]} ]; then
         json=$(curl -s $apiFrutas$i)
@@ -153,6 +151,7 @@ for i in "${idUnicos[@]}"; do
     done
 done
 
+#Me fijo por el parameto name
 for i in "${nameUnicos[@]}"; do
     if [ $i == "0" ]; then
         continue
@@ -180,7 +179,7 @@ for i in "${nameUnicos[@]}"; do
     key=""
 done
 
-#Escribo mis errores
+#Escribo mis errores a pantalla
 for llave in "${!cacheERROR[@]}"; do
     echo ${cacheERROR["$llave"]}
 done
