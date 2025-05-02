@@ -2,13 +2,6 @@
 
 #./ejercicio3.sh -d ~/repos/virtu/APL/bash --archivos txt,csv,sh --palabras if,for,else
 function ayuda() {
-    echo "Esta es la ayuda del script del ejercicio 3 de la APL 1."
-    echo "Ingresa un directorio base, las extensiones de archivos (csv, txt por ejemplo) sin puntos ni espacios y separadas por comas y por último las palabras que estés buscando, tambien entre comas y sin espacios"
-    echo "Ejemplo: Si estás buscando unicamente en /ruta las palabras for y else en las extensiones txt y sh, una correcta llamada seria:"
-    echo "./ejercicio3.sh -d /ruta/al/directorio --archivo txt,sh -p for,else"
-}
-
-function ayuda() {
     cat << EOF
 ───────────────────────────────────────────────
  Ayuda - Script del ejercicio 3 de la APL 1
@@ -33,7 +26,6 @@ Ejemplo de uso: buscando unicamente en /ruta las palabras for y else en las exte
 
 EOF
 }
-
 
 function validaciones(){
     #$1 = directorio
