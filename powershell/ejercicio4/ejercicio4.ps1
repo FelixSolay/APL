@@ -1,10 +1,4 @@
-param(
-    [Alias("d")][string]$directorio,
-    [Alias("s")][string]$salida,
-    [Alias("k")][switch]$kill,
-    [Alias("h")][switch]$help,
-    [Alias("c")][int]$cantidad
-)
+
 
 <#
 .SYNOPSIS
@@ -30,7 +24,7 @@ param(
 .PARAMETER cantidad
     cantidad de archivos a ordenar antes de generar un backup
 
-.PARAMETER Help
+.PARAMETER help
     Muestra esta ayuda.
 
 .NOTES
@@ -38,54 +32,20 @@ param(
     
 
 .EXAMPLE
-    .\ejercicio4.ps1 -d ./descargas -s ./backup -c 4
 
+    .\ejercicio4.ps1 -directorio ./descargas -salida ./backup -cantidad 3 -kill
+    .\ejercicio4.ps1 -directorio ./descargas -salida ./backup -cantidad 3 
+    .\ejercicio4.ps1 -directorio ./descargas2 -salida ./backup -cantidad 5 -kill
 
 #>
-$global:ordenados = 0
-function ProcesarArchivo {
-    param(
-        [string]$rutaArchivo,
-        [string]$directorio,
-        [string]$salida,
-        [int]$cantidad
-    )
-
-    $archivo = Get-Item $rutaArchivo
-
-    if (-not $archivo.PSIsContainer) {
-        $extension = $archivo.Extension.TrimStart(".")
-        $destino = Join-Path -Path $directorio -ChildPath $extension
-
-        if (-not (Test-Path $destino)) {
-            New-Item -ItemType Directory -Path $destino | Out-Null
-        }
-
-        $nombreArchivo = $archivo.Name
-        $nombreDestino = Join-Path -Path $destino -ChildPath $nombreArchivo
-
-        #El archivo puede existir desde antes, asi que le ponemos un copy adelante para evitar problemas.
-        while (Test-Path $nombreDestino) {
-            $nombreArchivo = "copy$nombreArchivo"
-            $nombreDestino = Join-Path -Path $destino -ChildPath $nombreArchivo
-        }
-
-        Move-Item -Path $archivo.FullName -Destination $nombreDestino
-
-        $global:ordenados++
-
-        if ($global:ordenados -eq $cantidad) {
-            $nombreDir = Split-Path -Path (Get-Location) -Leaf
-            $fecha = Get-Date -Format "yyyyMMdd_HHmmss"
-            $nombreZip = "${nombreDir}_${fecha}.zip"
-            $rutaZip = Join-Path -Path $salida -ChildPath $nombreZip
-
-            Compress-Archive -Path "$directorio\*" -DestinationPath $rutaZip -Force
-
-            $global:ordenados = 0
-        }
-    }
-}
+param(
+    [Alias("directorio")][string]$directorioPS,
+    [Alias("salida")][string]$salidaPS,
+    [Alias("kill")][switch]$killPS,
+    [Alias("help")][switch]$helpPS,
+    [Alias("cantidad")][System.int32]$cantidadPS
+)
+$global:ordenados = 0 #Necesito que sea global para que contemple los archivos ordenados en el barrido inicial del daemon
 
 function ValidarParametros {
     param(
@@ -93,7 +53,7 @@ function ValidarParametros {
         [string]$salida,
         [System.Boolean]$kill,
         [switch]$help,
-        [int]$cantidad
+        [System.int32]$cantidad
     )
 
     if (-not (Test-Path $directorio)) {
@@ -101,206 +61,201 @@ function ValidarParametros {
         exit 2
     }
 
-    if (-not (Test-Path $salida)) {
-        Write-Error "El directorio de salida no existe"
-        exit 3
-    }
-
-    if(-not $cantidad){
-        Write-Error "No fue indicada la cantidad de archivos para realizar backup"
-        exit 4
-    }
-
-    if ($kill -and (-not $directorio)) {
-        Write-Error "No se puede usar kill sin indicar un directorio"
-        exit 5
-    }
-
-    if($cantidad -le 0)
-    {
-        Write-Error "La cantidad debe ser un numero entero positivo"
-        exit 6
-    }
-
     $directorioAbsoluto = (Resolve-Path $directorio).Path
 
     # Definimos nombre de job basado en el path absoluto
     $jobName = "${directorioAbsoluto}_job"
-    $jobExistente = Get-Job -Name $jobName -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Running' }
+    #Para validar si un job ya esta corriendo en el directorio, primero le asignamos nombreDirectorio_job al crearlo, despues lo buscamos y que su estado sea "running"
+    $jobExistente = Get-Job -Name $jobName -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Running' } 
     if ($kill) {
         if ($jobExistente) {
-            # Si hay un job corriendo, eliminarlo
-            Write-Host "Finalizando job en ejecución para $directorioAbsoluto..."
+            # Si hay un job corriendo y seleccionamos kill, lo mata y termina
+            Write-Host "Finalizando job en ejecución para $directorioAbsoluto"
             Stop-Job -Name $jobName
             Remove-Job -Name $jobName
             Write-Host "Job eliminado correctamente."
             exit 0
         }
         else {
-            Write-Host "No hay ningún job en ejecución para $directorioAbsoluto."
-            exit 0
+            #Si seleccionamos kill y no hay ningun job activo, termina
+            Write-Error "No hay ningún job en ejecución para $directorioAbsoluto"
+            exit 3
         }
     }
-    # Validar si ya existe un job con ese nombre
+    # Si ya hay un job corriendo en el directorio y no seleccionamos kill, termina el proceso
     if ($jobExistente) {
-        Write-Host "Ya hay un job ejecutándose para el directorio $directorioAbsoluto."
-        exit
+        Write-Error "Ya hay un job ejecutándose para el directorio $directorioAbsoluto."
+        exit 4
     }
-    
+
+    if (-not (Test-Path $salida) -and (-not $kill)) {
+        Write-Error "El directorio de salida no existe"
+        exit 5
+    }
+
+
+    if ($kill -and (-not $directorio)) {
+        Write-Error "No se puede usar kill sin indicar un directorio"
+        exit 6
+    }
+
+    if ($cantidad -le 0) {
+        Write-Error "La cantidad debe ser un numero entero positivo"
+        exit 7
+    }
+}
+function ProcesarArchivo {
+    param(
+        [string]$rutaArchivo,   
+        [string]$directorio,    
+        [string]$salida,       
+        [int]$cantidad         
+    )
+
+    # Obtiene el objeto de archivo a partir de su ruta
+    $archivo = Get-Item $rutaArchivo
+
+    # Si no es una carpeta, lo procesa
+    if (-not $archivo.PSIsContainer) {
+        
+        $extension = $archivo.Extension.TrimStart(".")
+        $destino = Join-Path -Path $directorio -ChildPath $extension
+
+        # Crea el directorio de la extensión si no existe
+        if (-not (Test-Path $destino)) {
+            New-Item -ItemType Directory -Path $destino | Out-Null
+        }
+
+        # nombre base del archivo
+        $nombreBase = [IO.Path]::GetFileNameWithoutExtension($archivo)
+        # extension del archivo
+        $extension = [IO.Path]::GetExtension($archivo)
+        $nombreDestino = Join-Path -Path $destino -ChildPath ($nombreBase + $extension)
+        $contador = 1
+
+        # Si ya existe un archivo con ese nombre, le agrega _copy1, _copy2, etc.
+        while (Test-Path $nombreDestino) {
+            $nombreDestino = Join-Path -Path $destino -ChildPath ("${nombreBase}_copy$contador$extension")
+            $contador++
+        }
+        #Realizo un try-catch por razones de seguridad
+        try {
+            Move-Item -Path $archivo -Destination $nombreDestino -ErrorAction Stop
+        }
+        catch {
+            return
+        }
+        # Incrementa el contador global de archivos ordenados
+        $global:ordenados++
+
+        # Si se llegó a la cantidad requerida de archivos movidos, se empaqueta todo
+        if ($global:ordenados -eq $cantidad) {
+
+            $nombreDir = Split-Path -Path (Get-Location) -Leaf
+            $fecha = Get-Date -Format "yyyyMMdd_HHmmss"
+            $nombreZip = "${nombreDir}_${fecha}.zip"
+            $rutaZip = Join-Path -Path $salida -ChildPath $nombreZip
+
+            # Comprime todo el contenido del directorio en el ZIP
+            Compress-Archive -Path "$directorio\*" -DestinationPath $rutaZip -Force
+
+            # Resetea el contador
+            $global:ordenados = 0
+        }
+    }
 }
 
-if ($Help) {
+if ($HelpPS) {
     Get-Help -Detailed $MyInvocation.MyCommand.Path
     exit 0
 }
 
-
-
-function MatarProcesos {
-    param(
-        [string]$kill,
-        [string]$directorio
-    )
-
-    if ($kill -eq "true") {
-        # Obtiene todos los procesos con su PID y directorio de trabajo
-        Get-Process | ForEach-Object {
-            try {
-                # Obtiene el directorio actual del proceso desde Win32_Process (en Windows no existe /proc)
-                $proc = Get-CimInstance -ClassName Win32_Process -Filter "ProcessId=$($_.Id)"
-                $cwd = $proc.ExecutablePath
-
-                # Si se pudo obtener la ruta (algunos procesos pueden no tenerla)
-                if ($cwd) {
-                    $dir = Split-Path $cwd -Parent
-                    # Compara con el directorio buscado
-                    if ($dir -eq $directorio -and $_.Id -ne $PID) {
-                        Write-Output "Matando proceso $($_.Id) en $dir"
-                        Stop-Process -Id $_.Id -Force
-                    }
-                }
-            } catch {
-                # Algunos procesos pueden no permitir acceso
-                Write-Verbose "No se pudo acceder al proceso $($_.Id)"
-            }
-        }
-
-        exit 0
-    }
-}
-ValidarParametros -directorio $directorio -salida $salida -kill  $kill -cantidad $cantidad
-
-$global:directorio = $directorio
-$global:salida = $salida
-$global:cantidad = $cantidad
+ValidarParametros -directorio $directorioPS -salida $salidaPS -kill  $killPS -cantidad $cantidadPS
 
 # Barrido inicial de los archivos que haya en el directorio. Despues de esto se queda el FSwatcher
-$archivosExistentes = Get-ChildItem -Path $directorio -File
+$archivosExistentes = Get-ChildItem -Path $directorioPS -File
 foreach ($archivo in $archivosExistentes) {
-    ProcesarArchivo -rutaArchivo $archivo.FullName -directorio $directorio -salida $salida -cantidad $cantidad
+    ProcesarArchivo -rutaArchivo $archivo.FullName -directorio $directorioPS -salida $salidaPS -cantidad $cantidadPS
 }
-$rutaAbsoluta = (Resolve-Path $directorio).Path
+
+#El nombre del job es la ruta donde se ejecuta y _job
+$rutaAbsoluta = (Resolve-Path $directorioPS).Path
 $nombreJob = "${rutaAbsoluta}_job"
 
-$job = Start-Job -Name "$nombreJob" -ScriptBlock {
-    param($directorio, $salida, $cantidad)
+Write-Host "`nEl proceso se está ejecutando correctamente en segundo plano.`n"
 
-    # Variables dentro del job (propias de su scope)
-    $global:directorio = $directorio
-    $global:salida = $salida
-    $global:cantidad = $cantidad
-    $global:ordenados = 0
+Start-Job -Name "$nombreJob" -ScriptBlock {
+    param($directorio, $salida, $cantidad, $ordenados)
 
-$watcher = New-Object System.IO.FileSystemWatcher
-$watcher.Path = (Resolve-Path $directorio).Path
-$watcher.Filter = '*' 
-$watcher.IncludeSubdirectories = $false
-$watcher.NotifyFilter = [IO.NotifyFilters]::FileName, [IO.NotifyFilters]::LastWrite
-
-
-# Cada vez que los register detecten algo, va a ejecutar este bloque de codigo
-$onChange = {
-    Write-Host "Evento detectado: $($Event.SourceEventArgs.ChangeType) - $($Event.SourceEventArgs.FullPath)"
     
-    $archivo = $Event.SourceEventArgs.FullPath
-    if (-not (Test-Path $archivo)) {
-        #Write-Host "El archivo $archivo no existe. Cancelando procesamiento."
-        return
+    $watcher = New-Object System.IO.FileSystemWatcher
+    $watcher.Path = (Resolve-Path $directorio).Path
+    $watcher.Filter = '*'
+    $watcher.IncludeSubdirectories = $false
+    $watcher.NotifyFilter = [IO.NotifyFilters]::FileName, [IO.NotifyFilters]::LastWrite
+
+    # Variable contador local dentro del job
+    $script:contadorOrdenados = $ordenados
+
+    $onChange = {
+        $archivo = $Event.SourceEventArgs.FullPath
+
+        if (-not (Test-Path $archivo)) {
+            return
+        }
+
+        if (-not (Get-Item $archivo).PSIsContainer) {
+            $extension = [IO.Path]::GetExtension($archivo).TrimStart(".")
+            $destino = Join-Path -Path $directorio -ChildPath $extension
+
+            if (-not (Test-Path $destino)) {
+                New-Item -ItemType Directory -Path $destino | Out-Null
+            }
+
+            $nombreBase = [IO.Path]::GetFileNameWithoutExtension($archivo)
+            $ext = [IO.Path]::GetExtension($archivo)
+            $nombreDestino = Join-Path -Path $destino -ChildPath ($nombreBase + $ext)
+            $copia = 1
+
+            while (Test-Path $nombreDestino) {
+                $nombreDestino = Join-Path -Path $destino -ChildPath ("${nombreBase}_copy$copia$ext")
+                $copia++
+            }
+
+            try {
+                Move-Item -Path $archivo -Destination $nombreDestino -ErrorAction Stop
+            }
+            catch {
+                return
+            }
+
+            # Incrementa contador local
+            $script:contadorOrdenados++
+
+            if ($script:contadorOrdenados -eq $cantidad) {
+                $nombreDir = Split-Path -Path (Get-Location) -Leaf
+                $fecha = Get-Date -Format "yyyyMMdd_HHmmss"
+                $nombreZip = "${nombreDir}_${fecha}.zip"
+                $rutaZip = Join-Path -Path $salida -ChildPath $nombreZip
+
+                Compress-Archive -Path "$directorio\*" -DestinationPath $rutaZip -Force
+                Write-Host "Se creó el zip en $rutaZip"
+
+                $script:contadorOrdenados = 0
+            }
+        }
     }
-     Write-Host ""
-    # Write-Host "Adentro del registro del archivo::::::::::::::::::::::::::"
-    # Write-Host "Archivo: $archivo"
-    # Write-Host "Directorio: $global:directorio"
-    # Write-Host "Salida: $global:salida"
-    # Write-Host "Cantidad: $global:cantidad"
-    if (-not $archivo.PSIsContainer) {
-    $extension = [IO.Path]::GetExtension($archivo).TrimStart(".")
-    $destino = Join-Path -Path $global:directorio -ChildPath $extension
+     #Los eventos son crear o renombrar un archivo. Cuando movemos un archivo a esta carpeta, vscode/windows generan un movimiento equivalente que puede ser tanto created
+    #como renamed, asi que ponemos los dos para que tome todos los casos.
+    Register-ObjectEvent -InputObject $watcher -EventName Created -Action $onChange
+    Register-ObjectEvent -InputObject $watcher -EventName Renamed -Action $onChange
 
-    if (-not (Test-Path $destino)) {
-        New-Item -ItemType Directory -Path $destino | Out-Null
+    $watcher.EnableRaisingEvents = $true
+
+    while ($true) {
+        Wait-Event -Timeout 1 | Out-Null
     }
 
-        $nombreBase = [IO.Path]::GetFileNameWithoutExtension($archivo)
-    $extension = [IO.Path]::GetExtension($archivo)
-    $nombreDestino = Join-Path -Path $destino -ChildPath ($nombreBase + $extension)
-    $contador = 1
-
-    while (Test-Path $nombreDestino) {
-        $nombreDestino = Join-Path -Path $destino -ChildPath ("${nombreBase}_copy$contador$extension")
-        $contador++
-    }
-
-    try {
-        Move-Item -Path $archivo -Destination $nombreDestino -ErrorAction Stop
-        Write-Host "Archivo movido a $nombreDestino"
-    }
-    catch {
-        Write-Host "No se pudo mover $archivo"
-        return
-}
-    $global:ordenados++
-
-    if ($global:ordenados -eq $global:cantidad) {
-        $nombreDir = Split-Path -Path (Get-Location) -Leaf
-        $fecha = Get-Date -Format "yyyyMMdd_HHmmss"
-        $nombreZip = "${nombreDir}_${fecha}.zip"
-        $rutaZip = Join-Path -Path $global:salida -ChildPath $nombreZip
-
-        Compress-Archive -Path "$global:directorio\*" -DestinationPath $rutaZip -Force
-        Write-Host "Se creó el zip en $rutaZip"
-
-        $global:ordenados = 0
-    }}
-}
-
-#Los eventos son crear, cambiar o renombrar un archivo. Cuando movemos un archivo a esta carpeta, vscode/windows generan un movimiento equivalente que puede ser tanto created
-#como renamed, asi que ponemos los dos para que tome todos los casos.
+} -ArgumentList $directorioPS, $salidaPS, $cantidadPS, $global:ordenados | Out-Null
 
 
-Register-ObjectEvent -InputObject $watcher -EventName Created -Action $onChange
-Register-ObjectEvent -InputObject $watcher -EventName Renamed -Action $onChange
-Register-ObjectEvent -InputObject $watcher -EventName Deleted -Action $onChange
-Register-ObjectEvent -InputObject $watcher -EventName Changed -Action $onChange
-
-# Activar watcher
-try{
-$watcher.EnableRaisingEvents = $true
-# Write-Host "Antes de registrar el archivo"
-# Write-Host "Archivo: $archivo"
-# Write-Host "Directorio: $global:directorio"
-# Write-Host "Salida: $global:salida"
-# Write-Host "Cantidad: $global:cantidad"
-
-# Mensaje para confirmar que está en espera
-Write-Host "Vigilando $directorio..."
-
-# Mantener el script en espera (como un daemon)
-while ($true) {
-    Wait-Event -Timeout 1 | Out-Null
-}
-}
-finally{
-    Write-Host "`nLiberando subscriptores..."
-    Get-EventSubscriber | Where-Object { $_.SourceObject -eq $watcher } | Unregister-Event
-}} -ArgumentList $global:directorio, $global:salida, $global:cantidad
