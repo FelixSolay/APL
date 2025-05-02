@@ -1,5 +1,6 @@
 #!/bin/bash
-
+#librerias necesarias jq
+#sudo apt-get install jq
 ##---------------------------------------FUNCIONES---------------------------------------
 function ayuda() {
     cat << EOF
@@ -33,15 +34,25 @@ Ejemplo de uso:
 EOF
 }
 
-function validaciones(){
+function validacionesParam(){
 
-    local id="$1"
-    local name="$2"
+    local id=$1
+    local name=$2
 
     if [[ -z "$id" && -z "$name" ]]; then
         echo "No se cargo ninguna id ni ningun nombre"
         exit 1
     fi
+
+}
+
+function validacionesId(){
+    for i in "${@}"; do
+        if [[ ! $i =~ ^[0-9]+$ ]]; then
+            echo "id debe ser un numero entero positivo"
+            exit 2
+        fi
+    done
 }
 
 ##---------------------------------------"GETOPT"---------------------------------------
@@ -77,16 +88,32 @@ do
             ;;
     esac
 done
-
-validaciones "$ids" "$names"
+#Se valida que haya parametros
+validacionesParam $ids $names 
 
 IFS=',' read -ra id <<< "$ids"
 IFS=',' read -ra name <<< "$names"
 
+#Se valida que si hay id, estos sean numeros
+validacionesId ${id[@]}
+
+declare -A cacheJSON
+apiFrutas="https://www.fruityvice.com/api/fruit/"
+cacheFile="./cacheFile.txt"
+
+if [ ! -f $cacheFile ]; then #Si el cacheFile no existe lo creo
+    touch $cacheFile
+fi
+
+if [ -s $cacheFile ]; then #Si el cacheFile no esta vacio cargo el array cacheJSON
+    while read linea; do
+        cacheJSON["$(echo $linea | jq .id)"]=$linea
+    done < $cacheFile
+fi
+
 for i in "${id[@]}"; do
-    echo $i
+   json=$(curl -s $apiFrutas$i)
+   echo $json >> $cacheFile
+   echo $json
 done
 
-for i in "${name[@]}"; do
-    echo $i
-done

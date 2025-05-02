@@ -94,7 +94,7 @@ function ProcesarCSV {
 
     $Datos = Import-Csv -Path $RutaCSV -Delimiter ',' -Header 'ID','Fecha','Hora','Direccion','Temperatura'
 
-    $Resultados = @{}
+    $Resultados = @{}  #hashtable clave|valor
     $LineaActual = 1
     foreach ($Registro in $Datos) {
         $ID = $Registro.ID
@@ -133,7 +133,7 @@ function ProcesarCSV {
             $Resultados[$Fecha] = @{}
         }
         if (-not $Resultados[$Fecha].ContainsKey($Direccion)) {
-            $Resultados[$Fecha][$Direccion] = @{
+            $Resultados[$Fecha][$Direccion] = @{ #hashtable de estadísticas para cierta fecha y dirección
                 Min = [double]::MaxValue
                 Max = [double]::MinValue
                 Suma = 0
@@ -185,7 +185,7 @@ function ProcesarCSV {
     }
 }
 
-
+# MAIN
 if ($Help) {
     Get-Help -Detailed $MyInvocation.MyCommand.Path
     exit 0
