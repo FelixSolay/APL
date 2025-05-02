@@ -39,7 +39,6 @@ param(
     [Alias("p")][switch]$Pantalla,
     [Alias("h")][switch]$Help
 )
-
 function ValidarParametros {
     param(
         [string]$Directorio,
@@ -71,6 +70,28 @@ function ValidarParametros {
     if ($Archivo -and $Pantalla) {
         Write-Error "Solo se puede mostrar la salida por archivo o por pantalla, no ambos"
         exit 5
+    }
+    #si por ejemplo creamos \home\usuario\salida.json, esta validacion es que \home\usuario exista y ademas que el archivo sea un JSON
+    if ($Archivo) {
+        
+        $directorioPadre = Split-Path -Path $Archivo -Parent
+
+        
+        if (-not (Test-Path $directorioPadre)) {
+            Write-Error "El directorio '$directorioPadre' no existe."
+            exit 6
+        }
+
+        
+        if (-not (Get-Item $directorioPadre).PSIsContainer) {
+            Write-Error "La ruta '$directorioPadre' no es un directorio."
+            exit 7
+        }
+
+        if (-not ($Archivo -match "\.json$")) {
+            Write-Error "El archivo '$Archivo' debe tener extensión .json."
+            exit 8
+        }
     }
 }
 
