@@ -177,6 +177,20 @@ for i in "${nameUnicos[@]}"; do
         cacheJSON["$key"]=$json
     fi
     echo ${cacheJSON["$key"]} | jq -j '{id: .id, name: .name, genus: .genus, calories: .nutritions.calories, fat: .nutritions.fat, sugar: .nutritions.sugar, carbohydrates: .nutritions.carbohydrates, protein: .nutritions.protein}'
+    key=""
+done
+
+#Escribo mis errores
+for llave in "${!cacheERROR[@]}"; do
+    echo ${cacheERROR["$llave"]}
+done
+
+
+#Reescribo el cacheFile con mi cacheJSON actualizado
+rm $cacheFile
+touch $cacheFile
+for llave in "${!cacheJSON[@]}"; do
+    echo ${cacheJSON["$llave"]} >> $cacheFile
 done
 
 
