@@ -1,7 +1,7 @@
 #!/bin/bash
 #librerias necesarias jq
 #sudo apt-get install jq
-##---------------------------------------FUNCIONES---------------------------------------
+
 function ayuda() {
     cat << EOF
 ───────────────────────────────────────────────
@@ -55,7 +55,6 @@ function validacionesId(){
     done
 }
 
-##---------------------------------------"GETOPT"---------------------------------------
 options=$(getopt -o i:n:h --long id:,name:,help -- "$@" 2> /dev/null)
 if [ "$?" != "0" ] 
 then
@@ -88,6 +87,7 @@ do
             ;;
     esac
 done
+
 #Se valida que haya parametros
 validacionesParam $ids $names 
 
@@ -98,6 +98,7 @@ IFS=',' read -ra name <<< "$names"
 validacionesId ${id[@]}
 
 declare -A cacheJSON
+declare -A cacheERROR
 apiFrutas="https://www.fruityvice.com/api/fruit/"
 cacheFile="./cacheFile.txt"
 
@@ -111,9 +112,19 @@ if [ -s $cacheFile ]; then #Si el cacheFile no esta vacio cargo el array cacheJS
     done < $cacheFile
 fi
 
+#formato de salida
+#jq '{id: .id, name: .name, genus: .genus, calories: .nutritions.calories, fat: .nutritions.fat, sugar: .nutritions.sugar, carbohydrates: .nutritions.carbohydrates, protein: .nutritions.protein}' 
+
 for i in "${id[@]}"; do
-   json=$(curl -s $apiFrutas$i)
-   echo $json >> $cacheFile
-   echo $json
+    if [ -z ${cacheJSON["$i"]} ]; then
+        echo "hola"
+        json=$(curl -s $apiFrutas$i)
+        echo $(echo $json | jq -r '.error')
+        if [[ "$(echo $json | jq -r '.error')" == "Not found" ]]; then
+            echo "hola"
+        fi
+    fi
 done
+
+# echo ${cacheJSON["0"]}
 
