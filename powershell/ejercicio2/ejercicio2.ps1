@@ -167,8 +167,9 @@ if ($Help) {
 Validar -matriz $matriz -producto $producto -trasponer $trasponer -separador $separador
 
 #Similar al basename y dirname de bash, para armar la ruta de salida
-$nombreArchivo = [System.IO.Path]::GetFileName($matriz)
-$directorio = Split-Path $matriz -Parent
+$rutaAbsolutaMatriz = (Resolve-Path $matriz).Path
+$nombreArchivo = [System.IO.Path]::GetFileName($rutaAbsolutaMatriz)
+$directorio = Split-Path $rutaAbsolutaMatriz -Parent
 $rutaSalida = Join-Path $directorio "salida.$nombreArchivo"
 
-ProcesarMatriz -archivo $matriz -salida $rutaSalida -producto $producto -trasponer $trasponer.IsPresent -sep $separador
+ProcesarMatriz -archivo $rutaAbsolutaMatriz -salida $rutaSalida -producto $producto -trasponer $trasponer.IsPresent -sep $separador
