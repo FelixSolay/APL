@@ -1,11 +1,11 @@
 param(
     [Alias("d")][string]$directorio,
     [Alias("s")][string]$salida,
-    [Alias("k")][bool]$kill,
+    [Alias("k")][switch]$kill,
     [Alias("h")][switch]$help,
     [Alias("c")][int]$cantidad
 )
-Get-EventSubscriber | Unregister-Event
+
 <#
 .SYNOPSIS
     Script del ejercicio 4 de la APL 1.
@@ -50,9 +50,9 @@ function ProcesarArchivo {
         [string]$salida,
         [int]$cantidad
     )
-    Write-Host "Hasta aca llegue"
+
     $archivo = Get-Item $rutaArchivo
-    Write-Host "Hasta aca llegue"
+
     if (-not $archivo.PSIsContainer) {
         $extension = $archivo.Extension.TrimStart(".")
         $destino = Join-Path -Path $directorio -ChildPath $extension
@@ -91,7 +91,7 @@ function ValidarParametros {
     param(
         [string]$directorio,
         [string]$salida,
-        [bool]$kill,
+        [System.Boolean]$kill,
         [switch]$help,
         [int]$cantidad
     )
@@ -116,10 +116,35 @@ function ValidarParametros {
         exit 5
     }
 
-    if($cantidad -lt 0)
+    if($cantidad -le 0)
     {
         Write-Error "La cantidad debe ser un numero entero positivo"
         exit 6
+    }
+
+    $directorioAbsoluto = (Resolve-Path $directorio).Path
+
+    # Definimos nombre de job basado en el path absoluto
+    $jobName = "${directorioAbsoluto}_job"
+    $jobExistente = Get-Job -Name $jobName -ErrorAction SilentlyContinue | Where-Object { $_.State -eq 'Running' }
+    if ($kill) {
+        if ($jobExistente) {
+            # Si hay un job corriendo, eliminarlo
+            Write-Host "Finalizando job en ejecución para $directorioAbsoluto..."
+            Stop-Job -Name $jobName
+            Remove-Job -Name $jobName
+            Write-Host "Job eliminado correctamente."
+            exit 0
+        }
+        else {
+            Write-Host "No hay ningún job en ejecución para $directorioAbsoluto."
+            exit 0
+        }
+    }
+    # Validar si ya existe un job con ese nombre
+    if ($jobExistente) {
+        Write-Host "Ya hay un job ejecutándose para el directorio $directorioAbsoluto."
+        exit
     }
     
 }
@@ -174,14 +199,24 @@ $archivosExistentes = Get-ChildItem -Path $directorio -File
 foreach ($archivo in $archivosExistentes) {
     ProcesarArchivo -rutaArchivo $archivo.FullName -directorio $directorio -salida $salida -cantidad $cantidad
 }
+$rutaAbsoluta = (Resolve-Path $directorio).Path
+$nombreJob = "${rutaAbsoluta}_job"
 
-#$IncludeSubfolders = $false
+$job = Start-Job -Name "$nombreJob" -ScriptBlock {
+    param($directorio, $salida, $cantidad)
+
+    # Variables dentro del job (propias de su scope)
+    $global:directorio = $directorio
+    $global:salida = $salida
+    $global:cantidad = $cantidad
+    $global:ordenados = 0
+
 $watcher = New-Object System.IO.FileSystemWatcher
 $watcher.Path = (Resolve-Path $directorio).Path
 $watcher.Filter = '*' 
 $watcher.IncludeSubdirectories = $false
 $watcher.NotifyFilter = [IO.NotifyFilters]::FileName, [IO.NotifyFilters]::LastWrite
-#$watcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite, CreationTime, DirectoryName, Attributes, Size, Security'
+
 
 # Cada vez que los register detecten algo, va a ejecutar este bloque de codigo
 $onChange = {
@@ -193,11 +228,11 @@ $onChange = {
         return
     }
      Write-Host ""
-    Write-Host "Adentro del registro del archivo::::::::::::::::::::::::::"
-    Write-Host "Archivo: $archivo"
-    Write-Host "Directorio: $global:directorio"
-    Write-Host "Salida: $global:salida"
-    Write-Host "Cantidad: $global:cantidad"
+    # Write-Host "Adentro del registro del archivo::::::::::::::::::::::::::"
+    # Write-Host "Archivo: $archivo"
+    # Write-Host "Directorio: $global:directorio"
+    # Write-Host "Salida: $global:salida"
+    # Write-Host "Cantidad: $global:cantidad"
     if (-not $archivo.PSIsContainer) {
     $extension = [IO.Path]::GetExtension($archivo).TrimStart(".")
     $destino = Join-Path -Path $global:directorio -ChildPath $extension
@@ -239,29 +274,9 @@ $onChange = {
     }}
 }
 
-
-    
-
 #Los eventos son crear, cambiar o renombrar un archivo. Cuando movemos un archivo a esta carpeta, vscode/windows generan un movimiento equivalente que puede ser tanto created
 #como renamed, asi que ponemos los dos para que tome todos los casos.
-# Register-ObjectEvent -InputObject $watcher -EventName Changed -Action {
-#     $eventoLocal = $Event
-#     & $using:onChange $eventoLocal $using:directorio $using:salida $using:cantidad
-# }
 
-# Register-ObjectEvent -InputObject $watcher -EventName Created -Action {
-#     $eventoLocal = $Event
-#     & $using:onChange $eventoLocal $using:directorio $using:salida $using:cantidad
-# }
-
-# Register-ObjectEvent -InputObject $watcher -EventName Deleted -Action {
-#     $eventoLocal = $Event
-#     & $using:onChange $eventoLocal $using:directorio $using:salida $using:cantidad
-# }
-# Register-ObjectEvent -InputObject $watcher -EventName Renamed -Action {
-#     $eventoLocal = $Event
-#     & $using:onChange $eventoLocal $using:directorio $using:salida $using:cantidad
-# }
 
 Register-ObjectEvent -InputObject $watcher -EventName Created -Action $onChange
 Register-ObjectEvent -InputObject $watcher -EventName Renamed -Action $onChange
@@ -271,16 +286,14 @@ Register-ObjectEvent -InputObject $watcher -EventName Changed -Action $onChange
 # Activar watcher
 try{
 $watcher.EnableRaisingEvents = $true
-Write-Host "Antes de registrar el archivo"
-Write-Host "Archivo: $archivo"
-Write-Host "Directorio: $global:directorio"
-Write-Host "Salida: $global:salida"
-Write-Host "Cantidad: $global:cantidad"
+# Write-Host "Antes de registrar el archivo"
+# Write-Host "Archivo: $archivo"
+# Write-Host "Directorio: $global:directorio"
+# Write-Host "Salida: $global:salida"
+# Write-Host "Cantidad: $global:cantidad"
 
 # Mensaje para confirmar que está en espera
-Write-Host "Vigilando $directorio... presioná Ctrl+C para cortar."
-
-Write-Host "Watcher activo: $($watcher.EnableRaisingEvents)"
+Write-Host "Vigilando $directorio..."
 
 # Mantener el script en espera (como un daemon)
 while ($true) {
@@ -289,5 +302,5 @@ while ($true) {
 }
 finally{
     Write-Host "`nLiberando subscriptores..."
-    Get-EventSubscriber | Unregister-Event
-}
+    Get-EventSubscriber | Where-Object { $_.SourceObject -eq $watcher } | Unregister-Event
+}} -ArgumentList $global:directorio, $global:salida, $global:cantidad
