@@ -154,10 +154,32 @@ for i in "${idUnicos[@]}"; do
 done
 
 for i in "${nameUnicos[@]}"; do
-    if [ $i != "0" ]; then
-        
+    if [ $i == "0" ]; then
+        continue
     fi
+    for idKey in "${!cacheJSON[@]}"; do
+        if [ $i == $(echo ${cacheJSON[${idKey}]} | jq -r '.name') ]; then
+            key="$idKey"
+            break
+        fi
+    done
+    if [ -z $key ]; then
+        json=$(curl -s $apiFrutas$i)
+        if [ $? -eq 6 ]; then
+            cacheERROR["$i"]="Fruta $i: ERROR 6, No se pudo conectar a la API. Pruebe su conexion a internet"
+            continue
+        fi
+        if [[ "$(echo $json | jq -r '.error')" == "Not found" ]]; then
+            cacheERROR["$i"]="Fruta $i: Fruta no encontrada o valida"
+            continue
+        fi
+        key="$(echo $json | jq -r '.id')"
+        cacheJSON["$key"]=$json
+    fi
+    echo ${cacheJSON["$key"]} | jq -j '{id: .id, name: .name, genus: .genus, calories: .nutritions.calories, fat: .nutritions.fat, sugar: .nutritions.sugar, carbohydrates: .nutritions.carbohydrates, protein: .nutritions.protein}'
 done
 
-# echo ${cacheJSON["0"]}
+
+
+
 
