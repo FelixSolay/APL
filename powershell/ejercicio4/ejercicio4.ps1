@@ -1,13 +1,14 @@
 param(
-    [Alias("d")][string]$Directorio,
-    [Alias("s")][string]$Salida,
+    [Alias("d")][string]$directorio,
+    [Alias("s")][string]$salida,
     [Alias("k")][bool]$kill,
     [Alias("h")][switch]$help,
     [Alias("c")][int]$cantidad
 )
+Get-EventSubscriber | Unregister-Event
 <#
 .SYNOPSIS
-    Script del ejercicio 2 de la APL 1.
+    Script del ejercicio 4 de la APL 1.
 
 .DESCRIPTION
     Demonio que detecta cada vez que un archivo nuevo aparece en un directorio
@@ -37,44 +38,43 @@ param(
     
 
 .EXAMPLE
-    .\ejercicio1.ps1 -Directorio .\pruebas_normales.csv -Archivo .\salida.json
+    .\ejercicio4.ps1 -d ./descargas -s ./backup -c 4
 
-.EXAMPLE
-    .\ejercicio1.ps1 -d .\entrada.csv -p
+
 #>
-
-
-function ejecutarDaemon()
-{Validar-Parametros -directorio $directorio -salida $salida -kill  $kill -cantidad $cantidad
-$IncludeSubfolders = $false
-$watcher = New-Object System.IO.FileSystemWatcher
-$watcher.Path = (Resolve-Path $Directorio).Path
-$watcher.Filter = '*' 
-$watcher.IncludeSubdirectories = $IncludeSubfolders
-$watcher.NotifyFilter = [IO.NotifyFilters]::FileName, [IO.NotifyFilters]::LastWrite
-
-# Cada vez que los register detecten algo, va a ejecutar este bloque de codigo
-$onChange = {
-    $archivo = Get-Item $Event.SourceEventArgs.FullPath
-
-    # Si no es un archivo, salir
+$global:ordenados = 0
+function ProcesarArchivo {
+    param(
+        [string]$rutaArchivo,
+        [string]$directorio,
+        [string]$salida,
+        [int]$cantidad
+    )
+    Write-Host "Hasta aca llegue"
+    $archivo = Get-Item $rutaArchivo
+    Write-Host "Hasta aca llegue"
     if (-not $archivo.PSIsContainer) {
         $extension = $archivo.Extension.TrimStart(".")
-
-        # Crear carpeta para la extensión si no existe
         $destino = Join-Path -Path $directorio -ChildPath $extension
+
         if (-not (Test-Path $destino)) {
             New-Item -ItemType Directory -Path $destino | Out-Null
         }
 
-        # Mover archivo al directorio correspondiente
-        Move-Item -Path $archivo.FullName -Destination $destino
+        $nombreArchivo = $archivo.Name
+        $nombreDestino = Join-Path -Path $destino -ChildPath $nombreArchivo
 
-        # Incrementar contador global
-        $global:cantidadArchivosOrdenados++
+        #El archivo puede existir desde antes, asi que le ponemos un copy adelante para evitar problemas.
+        while (Test-Path $nombreDestino) {
+            $nombreArchivo = "copy$nombreArchivo"
+            $nombreDestino = Join-Path -Path $destino -ChildPath $nombreArchivo
+        }
 
-        # Si se llegó a la cantidad límite, hacer backup
-        if ($global:cantidadArchivosOrdenados -eq $cantidad) {
+        Move-Item -Path $archivo.FullName -Destination $nombreDestino
+
+        $global:ordenados++
+
+        if ($global:ordenados -eq $cantidad) {
             $nombreDir = Split-Path -Path (Get-Location) -Leaf
             $fecha = Get-Date -Format "yyyyMMdd_HHmmss"
             $nombreZip = "${nombreDir}_${fecha}.zip"
@@ -82,28 +82,12 @@ $onChange = {
 
             Compress-Archive -Path "$directorio\*" -DestinationPath $rutaZip -Force
 
-            # Reiniciar contador
-            $global:cantidadArchivosOrdenados = 0
+            $global:ordenados = 0
         }
     }
 }
 
-#Los eventos son crear, cambiar o renombrar un archivo. Cuando movemos un archivo a esta carpeta, vscode/windows generan un movimiento equivalente que puede ser tanto created
-#como renamed, asi que ponemos los dos para que tome todos los casos.
-Register-ObjectEvent $watcher Created -Action $onChange
-Register-ObjectEvent $watcher Changed -Action $onChange
-Register-ObjectEvent $watcher Renamed -Action $onChange
-
-# Activar watcher
-$watcher.EnableRaisingEvents = $true
-
-# Mensaje para confirmar que está en espera
-Write-Host "Vigilando $Directorio... presioná Ctrl+C para cortar."
-
-# Mantener el script en espera (como un daemon)
-while ($true) { Start-Sleep -Seconds 1 }}
-
-function Validar-Parametros {
+function ValidarParametros {
     param(
         [string]$directorio,
         [string]$salida,
@@ -147,7 +131,7 @@ if ($Help) {
 
 
 
-function Matar-Procesos {
+function MatarProcesos {
     param(
         [string]$kill,
         [string]$directorio
@@ -179,38 +163,131 @@ function Matar-Procesos {
         exit 0
     }
 }
+ValidarParametros -directorio $directorio -salida $salida -kill  $kill -cantidad $cantidad
 
-# Listar solo archivos (sin subcarpetas)
-$archivos = Get-ChildItem -Path $directorio -File ##
+$global:directorio = $directorio
+$global:salida = $salida
+$global:cantidad = $cantidad
 
-foreach ($archivo in $archivos) {
-    $extension = $archivo.Extension.TrimStart(".")  # sin el punto
+# Barrido inicial de los archivos que haya en el directorio. Despues de esto se queda el FSwatcher
+$archivosExistentes = Get-ChildItem -Path $directorio -File
+foreach ($archivo in $archivosExistentes) {
+    ProcesarArchivo -rutaArchivo $archivo.FullName -directorio $directorio -salida $salida -cantidad $cantidad
+}
 
-    # Crear carpeta de la extensión si no existe
-    $destino = Join-Path -Path $directorio -ChildPath $extension
+#$IncludeSubfolders = $false
+$watcher = New-Object System.IO.FileSystemWatcher
+$watcher.Path = (Resolve-Path $directorio).Path
+$watcher.Filter = '*' 
+$watcher.IncludeSubdirectories = $false
+$watcher.NotifyFilter = [IO.NotifyFilters]::FileName, [IO.NotifyFilters]::LastWrite
+#$watcher.NotifyFilter = [IO.NotifyFilters]'FileName, LastWrite, CreationTime, DirectoryName, Attributes, Size, Security'
+
+# Cada vez que los register detecten algo, va a ejecutar este bloque de codigo
+$onChange = {
+    Write-Host "Evento detectado: $($Event.SourceEventArgs.ChangeType) - $($Event.SourceEventArgs.FullPath)"
+    
+    $archivo = $Event.SourceEventArgs.FullPath
+    if (-not (Test-Path $archivo)) {
+        #Write-Host "El archivo $archivo no existe. Cancelando procesamiento."
+        return
+    }
+     Write-Host ""
+    Write-Host "Adentro del registro del archivo::::::::::::::::::::::::::"
+    Write-Host "Archivo: $archivo"
+    Write-Host "Directorio: $global:directorio"
+    Write-Host "Salida: $global:salida"
+    Write-Host "Cantidad: $global:cantidad"
+    if (-not $archivo.PSIsContainer) {
+    $extension = [IO.Path]::GetExtension($archivo).TrimStart(".")
+    $destino = Join-Path -Path $global:directorio -ChildPath $extension
+
     if (-not (Test-Path $destino)) {
         New-Item -ItemType Directory -Path $destino | Out-Null
     }
 
-    # Mover archivo al directorio correspondiente
-    Move-Item -Path $archivo.FullName -Destination $destino
+        $nombreBase = [IO.Path]::GetFileNameWithoutExtension($archivo)
+    $extension = [IO.Path]::GetExtension($archivo)
+    $nombreDestino = Join-Path -Path $destino -ChildPath ($nombreBase + $extension)
+    $contador = 1
 
-    # Incrementar contador
-    $cantidadArchivosOrdenados++
+    while (Test-Path $nombreDestino) {
+        $nombreDestino = Join-Path -Path $destino -ChildPath ("${nombreBase}_copy$contador$extension")
+        $contador++
+    }
 
-    # Si se llegó a la cantidad límite, hacer backup
-    if ($cantidadArchivosOrdenados -eq $cantidad) {
+    try {
+        Move-Item -Path $archivo -Destination $nombreDestino -ErrorAction Stop
+        Write-Host "Archivo movido a $nombreDestino"
+    }
+    catch {
+        Write-Host "No se pudo mover $archivo"
+        return
+}
+    $global:ordenados++
+
+    if ($global:ordenados -eq $global:cantidad) {
         $nombreDir = Split-Path -Path (Get-Location) -Leaf
         $fecha = Get-Date -Format "yyyyMMdd_HHmmss"
         $nombreZip = "${nombreDir}_${fecha}.zip"
-        $rutaZip = Join-Path -Path $salida -ChildPath $nombreZip
+        $rutaZip = Join-Path -Path $global:salida -ChildPath $nombreZip
 
-        # Crear backup comprimido del directorio actual
-        Compress-Archive -Path "$directorio\*" -DestinationPath $rutaZip -Force
+        Compress-Archive -Path "$global:directorio\*" -DestinationPath $rutaZip -Force
+        Write-Host "Se creó el zip en $rutaZip"
 
-        # Reiniciar contador
-        $cantidadArchivosOrdenados = 0
-    }
+        $global:ordenados = 0
+    }}
 }
 
 
+    
+
+#Los eventos son crear, cambiar o renombrar un archivo. Cuando movemos un archivo a esta carpeta, vscode/windows generan un movimiento equivalente que puede ser tanto created
+#como renamed, asi que ponemos los dos para que tome todos los casos.
+# Register-ObjectEvent -InputObject $watcher -EventName Changed -Action {
+#     $eventoLocal = $Event
+#     & $using:onChange $eventoLocal $using:directorio $using:salida $using:cantidad
+# }
+
+# Register-ObjectEvent -InputObject $watcher -EventName Created -Action {
+#     $eventoLocal = $Event
+#     & $using:onChange $eventoLocal $using:directorio $using:salida $using:cantidad
+# }
+
+# Register-ObjectEvent -InputObject $watcher -EventName Deleted -Action {
+#     $eventoLocal = $Event
+#     & $using:onChange $eventoLocal $using:directorio $using:salida $using:cantidad
+# }
+# Register-ObjectEvent -InputObject $watcher -EventName Renamed -Action {
+#     $eventoLocal = $Event
+#     & $using:onChange $eventoLocal $using:directorio $using:salida $using:cantidad
+# }
+
+Register-ObjectEvent -InputObject $watcher -EventName Created -Action $onChange
+Register-ObjectEvent -InputObject $watcher -EventName Renamed -Action $onChange
+Register-ObjectEvent -InputObject $watcher -EventName Deleted -Action $onChange
+Register-ObjectEvent -InputObject $watcher -EventName Changed -Action $onChange
+
+# Activar watcher
+try{
+$watcher.EnableRaisingEvents = $true
+Write-Host "Antes de registrar el archivo"
+Write-Host "Archivo: $archivo"
+Write-Host "Directorio: $global:directorio"
+Write-Host "Salida: $global:salida"
+Write-Host "Cantidad: $global:cantidad"
+
+# Mensaje para confirmar que está en espera
+Write-Host "Vigilando $directorio... presioná Ctrl+C para cortar."
+
+Write-Host "Watcher activo: $($watcher.EnableRaisingEvents)"
+
+# Mantener el script en espera (como un daemon)
+while ($true) {
+    Wait-Event -Timeout 1 | Out-Null
+}
+}
+finally{
+    Write-Host "`nLiberando subscriptores..."
+    Get-EventSubscriber | Unregister-Event
+}
