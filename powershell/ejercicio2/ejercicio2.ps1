@@ -42,14 +42,14 @@
 
 
 param(
-    [string]$matriz,
-    [double]$producto,
-    [switch]$trasponer,
-    [string]$separador = "|",
-    [switch]$help
+    [Alias("m")][string]$matriz,
+    [Alias("p")][double]$producto,
+    [Alias("t")][switch]$trasponer,
+    [Alias("s")][string]$separador = "|",
+    [Alias("h")][switch]$help
 )
 
-function Validar {
+function ValidarParametros {
     param (
         [string]$matriz,
         [Nullable[Double]]$producto,
@@ -164,7 +164,7 @@ if ($Help) {
     exit 0
 }
 
-Validar -matriz $matriz -producto $producto -trasponer $trasponer -separador $separador
+ValidarParametros -matriz $matriz -producto $producto -trasponer $trasponer -separador $separador
 
 #Similar al basename y dirname de bash, para armar la ruta de salida
 $nombreArchivo = [System.IO.Path]::GetFileName($matriz)
