@@ -23,7 +23,7 @@ function ayuda() {
   -d, --directorio     Ruta del directorio a monitorear
   -s, --salida         Ruta del directorio en donde se van a crear los backups
   -k, --kill           Flag que indica que el script debe detener el demonio iniciado
-  -c, --cantidad       antidad de archivos a ordenar antes de generar un backup
+  -c, --cantidad       cantidad de archivos a ordenar antes de generar un backup
 
  Aclaraciones:
   El parámetro -k o --kill se debe utilizar únicamente junto con -d o --directorio
