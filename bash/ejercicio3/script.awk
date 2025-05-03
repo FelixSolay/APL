@@ -4,14 +4,14 @@ BEGIN{
 
 {
     for (clave in palabrasABuscar)
-    {    
+    {   
+        #usamos regex para que tome la palabra completa y no una porcion de la misma
+        regex = "\\<" palabrasABuscar[clave] "\\>"
         linea=$0
-        pos=index(linea, palabrasABuscar[clave])
-        while(pos!=0)
+        while (match(linea,regex))
         {
             apariciones[clave]++;
-            linea=substr(linea, pos+1)
-            pos=index(linea, palabrasABuscar[clave])
+            linea = substr(linea, RSTART + RLENGTH) 
         }
     }
 

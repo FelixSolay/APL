@@ -74,11 +74,9 @@ foreach ($archivo in $archivosEncontrados) {
     Get-Content $archivo.FullName | ForEach-Object {
         $linea = $_ 
         foreach ($palabra in $palabras) {
-            $temp = $linea
-            while (($idx = $temp.IndexOf($palabra)) -ge 0) {
-                $apariciones[$palabra]++
-                $temp = $temp.Substring($idx + 1)
-            }
+            #usamos regex para que tome la palabra completa y no una porcion de la misma
+            $regex = "\b$([regex]::Escape($palabra))\b"
+            $apariciones[$palabra] += ([regex]::Matches($linea,$regex)).Count
         }
     }
 }
