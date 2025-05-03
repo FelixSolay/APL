@@ -42,10 +42,25 @@
 
 
 param(
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrWhiteSpace()]
+    [ValidateScript({ (Test-Path $_) -and (Get-Item $_).Length -gt 0 })]
+    [ValidateScript({ $_.EndsWith(".txt") })]
+    [validateScript({ -not (([System.IO.Path]::GetFileName($_)) -match '\.txt\.\w+$') })]
     [Alias("m")][string]$matriz,
+
+    [Parameter(Mandatory, ParameterSetName = "Producto")]
     [Alias("p")][double]$producto,
+
+    [Parameter(Mandatory, ParameterSetName = "Transponer")]
     [Alias("t")][switch]$trasponer,
+
+    [Parameter()]
+    [ValidateNotNullOrWhiteSpace()]
+    [ValidateScript({ -not ($_ -match '^-?\d+$') })]
+    [ValidateScript({ $_.Length -eq 1 })]
     [Alias("s")][string]$separador = "|",
+
     [Alias("h")][switch]$help
 )
 
