@@ -72,8 +72,25 @@ function validaciones()
         echo "Solo se puede mostrar la salida por archivo o por pantalla, no ambos"
         exit 5
     fi
-    #validacionDeRutaDeSalida=`ls "$archivo"`
-    #Falta hacer una validacion de si el pathing de salida que ingresa el usuario existe, sea relativo, absoluto o tenga espacios
+
+    if [[ -n "$archivo" ]]; then
+        directorioPadre=$(dirname "$archivo")
+
+        if [[ ! -d "$directorioPadre" ]]; then
+            echo "Error: El directorio '$directorioPadre' no existe." 
+            exit 6
+        fi
+
+        if [[ ! -e "$directorioPadre" || ! -d "$directorioPadre" ]]; then
+            echo "Error: La ruta '$directorioPadre' no es un directorio."
+            exit 7
+        fi
+
+        if [[ ! "$archivo" =~ \.json$ ]]; then
+            echo "Error: El archivo '$archivo' debe tener extensión .json."
+            exit 8
+        fi
+    fi
 }
 
 ##---------------------------------------"GETOPT"---------------------------------------
