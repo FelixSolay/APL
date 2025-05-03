@@ -18,7 +18,8 @@ function ayuda() {
   -n, --name         Nombre/s de als frutas a buscar
 
  Aclaraciones:
-  Una vez obtenida la informacion, se generará esta a modo de cache para no volver a consultarse en la api. Se mostrara la informacion con el siguiente formato:
+  Una vez obtenida la informacion, se generará esta a modo de cache para no volver a consultarse en la api.
+  Se mostrara la informacion con el siguiente formato:
   id: 2,
   name: Orange,
   genus: Citrus,
