@@ -23,10 +23,20 @@
 #>
 
 param (
-    [Alias("h")][switch]$Help,
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrWhiteSpace()]
+    [ValidateScript({ Test-Path $_ -PathType Container })]
     [Alias("d")][string]$Directorio,
+
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrWhiteSpace()]
     [Alias("a")][string[]]$Archivos, #pasan como lista
-    [Alias("p")][string[]]$Palabras #pasan como lista
+
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrWhiteSpace()]
+    [Alias("p")][string[]]$Palabras, #pasan como lista
+
+    [Alias("h")][switch]$Help
 )
 
 function ValidarParametros($Directorio, $Extensiones, $Palabras) {
