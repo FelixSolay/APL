@@ -50,6 +50,7 @@ param(
     [Alias("m")][string]$matriz,
 
     [Parameter(Mandatory, ParameterSetName = "Producto")]
+    [validateNotNull()]
     [Alias("p")][double]$producto,
 
     [Parameter(Mandatory, ParameterSetName = "Transponer")]
