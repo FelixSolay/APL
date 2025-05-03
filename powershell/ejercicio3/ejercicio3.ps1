@@ -19,14 +19,14 @@
     Muestra esta ayuda.
 
 .EXAMPLE
-    ./ejercicio3.sh -d /ruta/al/directorio --archivo txt,sh -p for,else
+    ./ejercicio3.ps1 -d /ruta/al/directorio --archivo txt,csv,ps1 -p for,else
 #>
 
 param (
     [Alias("h")][switch]$Help,
     [Alias("d")][string]$Directorio,
-    [Alias("a")][string[]]$Archivos,
-    [Alias("p")][string[]]$Palabras
+    [Alias("a")][string[]]$Archivos, #pasan como lista
+    [Alias("p")][string[]]$Palabras #pasan como lista
 )
 
 function ValidarParametros($Directorio, $Extensiones, $Palabras) {
@@ -50,11 +50,15 @@ if ($Help) {
     exit 0
 }
 
+#DEBUG
+#Write-Host "Extensiones: $($Archivos -join ', ')"
+#Write-Host "Palabras: $($Palabras -join ', ')"
+
 ValidarParametros $Directorio $Archivos $Palabras
 #antepongo "*." a las extensiones de los archivos buscados para utilizarlo como patrón de búsqueda
-$extensiones = $Archivos -split ',' | ForEach-Object { "*." + $_ }
+$extensiones = $Archivos -split ',' | ForEach-Object { "*." + $_ } # -split ',' <- Habría que hacerlo sin split, pero corriendo desde linux no lo detecta como lista
 #Al parámetro Palabras lo separo y corto todos los posibles espacios que haya entre la lista
-$palabras = $Palabras -split ',' | ForEach-Object { $_.Trim() }
+$palabras = $Palabras -split ',' | ForEach-Object { $_.Trim() }# -split ',' <- Habría que hacerlo sin split, pero corriendo desde linux no lo detecta como lista
 #armar vector de archivos
 $archivosEncontrados = @()
 foreach ($ext in $extensiones) {
