@@ -34,8 +34,21 @@
 #>
 
 param(
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrWhiteSpace()]
+    [ValidateScript({ (Test-Path $_) -and (Get-Content $_).Length -gt 0})]
+    [ValidateScript({ [System.IO.Path]::GetExtension($_) -eq ".csv" })]
+    [ValidateScript({ -not (([System.IO.Path]::GetFileName($_)) -match '\.csv\.\w+$') })]
     [Alias("d")][string]$Directorio,
+
+    [Parameter(Mandatory, ParameterSetName = "Archivo")]
+    [ValidateNotNullOrWhiteSpace()]
+    [ValidateScript({ $_ -match "\.json$" })]
+    [ValidateScript({ Test-Path (Split-Path -Path $_ -Parent) })]
+    [ValidateScript({ (Get-Item (Split-Path -Path $_ -Parent)).PSIsContainer })]
     [Alias("a")][string]$Archivo,
+
+    [Parameter(Mandatory, ParameterSetName = "Pantalla")]
     [Alias("p")][switch]$Pantalla,
     [Alias("h")][switch]$Help
 )
