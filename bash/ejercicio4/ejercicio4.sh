@@ -1,8 +1,16 @@
 #!/bin/bash
 
-#./ejercicio4.sh -d ./descargas -s ./backup -c 4 -k
+########################################
+#INTEGRANTES DEL GRUPO
+# MARTINS LOURO, LUCIANO AGUSTÍN
+# PASSARELLI, AGUSTIN EZEQUIEL
+# WEIDMANN, GERMAN ARIEL
+# DE SOLAY, FELIX                       
+########################################
+
 #librerias necesarias: zip, inotify-tools 
 #sudo apt-get install inotify-tools
+#sudo apt-get install zip
 
 function ayuda() {
     cat << EOF
@@ -46,7 +54,6 @@ function validaciones(){
     local cantidad="$3"
     local kill="$4"
 
-    #siempre tiene que haber un directorio en -d ($1), ya sea con kill o no
     if [[ -z "$directorio" ]];then
         echo "ERROR: Debe especificar un directorio con -d o --directorio."
         exit 1
@@ -58,18 +65,17 @@ function validaciones(){
     fi
     
     # Si es un kill, no validar salida ni cantidad
-#    echo "DEBUG: entré en validaciones con el parámetro 4 con valor: $kill" 
+
     if [[ "$kill" == "true" ]]; then
-#        echo "DEBUG: deberia ignorar las otras validaciones porque me tiraste un kill"
         return
     fi    
 
-    #si no salió con kill debe especificar una salida
+
     if [[ -z "$salida" ]]; then
         echo "ERROR: Debe especificar un directorio de salida con -s o --salida."
         exit 3
     fi
-    #Y una cantidad
+
     if [[ -z "$cantidad" ]]; then
         echo "ERROR: Debe especificar una cantidad de archivos a ordenar antes de generar un backup con -c o --cantidad."
         exit 4
@@ -85,95 +91,93 @@ function validaciones(){
         exit 6
     fi
 
-
-}
-function validarKill(){
-    local directorio="$1"
-    local kill="$2"
-    #Validar si otro proceso esta corriendo en el mismo directorio
-    if [[ $kill = "false" ]];then
-    for pid in $(ps -eo pid --no-headers); do #obtiene un iterable de todos los pid solo con el numero, sin headers
-        dir=$(readlink -f /proc/$pid/cwd) #/proc/$pid/cwd devuelve una referencia al proceso. Con readlink podemos obtener su ruta absoluta para asi compararla
-        if [[ "$dir" == "$directorio" && $pid -ne $$ ]]; then
-            echo "El proceso daemon ya está siendo ejecutado en el directorio actual."
-            exit 7
-        fi
-    done
+    if [[ $(realpath "$directorio") == $(realpath "$salida") ]];then
+        echo "El directorio de entrada y de salida no pueden ser el mismo"
+        exit 7
     fi
 
+}
+
+
+function validarKill() {
+    local directorio="$1"
+    local kill="$2"
+    local procesoEncontrado=0
+    #Validar si otro proceso esta corriendo en el mismo directorio
+    for pid in $(ps -eo pid --no-headers); do #obtiene un iterable de todos los pid solo con el numero, sin headers
+        dir=$(readlink -f /proc/$pid/cwd 2>/dev/null) #/proc/$pid/cwd devuelve una referencia al proceso. Con readlink podemos obtener su ruta absoluta para asi compararla
+        if [[ "$dir" == "$directorio" && $pid -ne $$ ]]; then
+            procesoEncontrado=1
+            break
+        fi
+    done
+
+    if [[ "$kill" == "false" ]]; then
+        if [[ $procesoEncontrado -eq 1 ]]; then
+            echo "El proceso daemon ya está siendo ejecutado en el directorio actual."
+            exit 8
+        fi
+    elif [[ "$kill" == "true" ]]; then
+        if [[ $procesoEncontrado -eq 0 ]]; then
+            echo "No hay ningún proceso daemon corriendo en el directorio actual para finalizar."
+            exit 9
+        fi
+    fi
+}
+
+
+function moverArchivos(){
+    local archivo="$1"
+    local nombreArchivo extension nombre_dir fecha
+    nombreArchivo=$(basename "$archivo")
+    extension="${nombreArchivo##*.}"
+
+    if [[ "$nombreArchivo" == "$extension" ]]; then
+        extension="sin_extension"
+    fi
+    mkdir -p "$directorio/$extension"
+    mv "$archivo" -t "$directorio/$extension" 2> /dev/null
+    
+    (( cantidadArchivosOrdenados++ ))
+
+    if [[ $cantidadArchivosOrdenados -eq "$cantidad" ]]; then
+        nombre_dir=$(basename "$(pwd)")
+        fecha=$(date +"%Y%m%d_%H%M%S")
+        zip -r "$salida/${nombre_dir}_${fecha}.zip" . > /dev/null
+        cantidadArchivosOrdenados=0
+    fi
 }
 
 function ordenarArchivosPorExtension() {
     #Primero tiene que hacer un barrido inicial y despues se queda escuchando
     cd "$directorio" || { echo "No se pudo cambiar de directorio"; exit 1; }
-
     cantidadArchivosOrdenados=0
+    mapfile -t archivos < <(find "$directorio" -maxdepth 1 -type f) #el maxdepth es para que el find no haga busqueda recursiva
+    for archivo1 in "${archivos[@]}"; do
+        moverArchivos "$archivo1"
+    done
 
-    mapfile -t archivos < <(find "$directorio" -maxdepth 1 -type f) #el maxdepth es para que no siga buscando adentro de las carpetas el find
-        #echo "el mapfile: ${archivos[@]} "
-        #echo "el mapfile tiene ${#archivos[@]} archivos "
-        num=0
-        while [[ num -lt ${#archivos[@]} ]]
-        do
-            
-            IFS='.' read -r -a archivoActual <<< "${archivos[num]}" #El array archivoActual tiene en su posicion 0 el pathing y en el 1 la extension
-            (( num += 1 ))
-            #echo "en la posicion 1: ${archivoActual[0]}"
-            #echo "en la posicion 2: ${archivoActual[1]}"
-            #prueba=$(find "$directorio" -name "${archivoActual[1]}" -type d)
-            #echo "pesos prueba: $prueba"
-            `mkdir -p "$directorio"\/"${archivoActual[1]}"` #con el -p, mkdir no tira un error si el directorio ya existe por lo que no necesito validar
-
-            `mv "${archivoActual[0]}"."${archivoActual[1]}" -t "$directorio"\/"${archivoActual[1]}"` #mueve el archivo actual al directorio indicado con -t, sin el -t solo cambia el nombre
-             (( cantidadArchivosOrdenados += 1 ))
-             if [[ $cantidadArchivosOrdenados -eq "$cantidad" ]];then
-                nombre_dir=$(basename "$(pwd)")
-                fecha=$(date +"%Y%m%d_%H%M%S")
-                zip -r "$salida/${nombre_dir}_${fecha}.zip" . > /dev/null
-                cantidadArchivosOrdenados=0;
-            fi
-        done
-
-    inotifywait -m -e create -e moved_to -e close_write -e modify -e attrib --format "%w%f" "$directorio" | while read archivo
+    inotifywait -m -e create -e moved_to -e close_write --format "%w%f" "$directorio" 2>/dev/null | while read archivo2
     do
         sleep 0.5 #Sin este sleep apenas pones el archivo lo mueve y vscode puede tirar un error. No es realmente necesario
-        if [[ -f "$archivo" ]]; then
-            nombreArchivo=$(basename "$archivo")
-            extension="${nombreArchivo##*.}"
-            
-            if [[ "$nombreArchivo" == "$extension" ]]; then
-                extension="sin_extension"
-            fi
-
-            mkdir -p "$directorio/$extension"
-            mv "$archivo" -t "$directorio/$extension/"
-            (( cantidadArchivosOrdenados++ ))
-
-            # Backup si se alcanzó el límite
-            if [[ $cantidadArchivosOrdenados -eq "$cantidad" ]]; then
-                nombre_dir=$(basename "$(pwd)")
-                fecha=$(date +"%Y%m%d_%H%M%S")
-                zip -r "$salida/${nombre_dir}_${fecha}.zip" . > /dev/null
-                cantidadArchivosOrdenados=0
-            fi
+        if [[ -f "$archivo2" ]]; then #Por cómo se dan los eventos en vscode, un solo movimiento se puede triggerear varias veces, asi que hay que validar
+            moverArchivos "$archivo2"
         fi
     done
 }
 
  function matarProcesos(){
-    local kill="$1"
-    if [[ $kill = "true" ]];then
+
     for pid in $(ps -eo pid --no-headers); do #obtiene un iterable de todos los pid solo con el numero, sin headers
         dir=$(readlink -f /proc/$pid/cwd) #/proc/$pid/cwd devuelve una referencia al proceso. Con readlink podemos obtener su ruta absoluta para asi compararla
         if [[ "$dir" == "$directorio" ]]; then
-            if [[ "$pid" -ne "$$" ]]; then #Verifico que mate a todos los procesos menos al proceso actual
+            if [[ "$pid" -ne "$$" ]]; then #Verifico que mate a todos los procesos menos al proceso actual ($$)
                 echo "Matando proceso $pid en $dir"
                 kill $pid
             fi
         fi
     done
     exit 0 #Exit mata al proceso actual y con el 0 decimos que fue exitoso. Si lo terminamos con un kill diria "terminated" y podria dar a entender que finalizó mal cuando no es asi.
-    fi
  }
 
 options=$(getopt -o d:s:khc: --long help,directorio:,salida:,cantidad:,kill -- "$@" 2> /dev/null)
@@ -191,21 +195,15 @@ do
             
             directorio="$2"
             shift 2
-
-            echo "El parámetro -d o --directorio tiene el valor $directorio"
             ;;
         -s | --salida)
             salida="$2"
             shift 2
-            
-            echo "El parámetro -s o --salida tiene el valor $salida"
             ;;
         
         -c | --cantidad)
             cantidad="$2"
             shift 2
-            
-            echo "El parámetro -c o --cantidad tiene el valor $cantidad"
             ;;         
         -h | --help)
             ayuda
@@ -213,7 +211,6 @@ do
             ;;
         -k | --kill)
             kill="true"
-            echo "El parametro kill fue seleccionado"
             shift
             ;;
         --)
@@ -227,29 +224,17 @@ do
     esac
 done
 
-#directorio=${directorio:-""}
-#salida=${salida:-""}
-#cantidad=${cantidad:-""}
-#kill=${kill:-"false"}
-
 validaciones "$directorio" "$salida" "$cantidad" "$kill"
 
 #Para este punto sabemos que las rutas son validas y necesitamos manejar si o si direcciones absolutas, asi que las convertimos
 directorio=$(realpath "$directorio");
-salida=$(realpath "$salida");
 
 validarKill "$directorio" "$kill"
+if [[ "$kill" == "true" ]];then
+     matarProcesos "$kill"
+fi
 
-matarProcesos "$kill"
-
-#pruebanotify & disown
+salida=$(realpath "$salida"); #Para este punto si se seleccionó kill el programa ya hubiera terminado
 
 #El disown hace que el proceso se siga ejecutando en segundo plano y me libera la terminal
 ordenarArchivosPorExtension & disown
-
-
-
-# readlink -f /proc/pid/cwd 
- #en pid pones el pid del proceso
-#./ejercicio4.sh -d ./descargas -s ./backup -c 4 -k
-#./ejercicio4.sh -d ./descargas2 -s ./backup -c 4 -k
