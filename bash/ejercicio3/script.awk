@@ -7,6 +7,8 @@ BEGIN{
     {   
         #usamos regex para que tome la palabra completa y no una porcion de la misma
         regex = "\\<" palabrasABuscar[clave] "\\>"
+        #De esta otra manera busca las palabras tal cual, sin considerar si son porción de otra palabra
+        #regex = palabrasABuscar[clave]
         linea=$0
         while (match(linea,regex))
         {
@@ -38,28 +40,3 @@ END{
         delete salida[max_palabra]
     }    
 }
-
-
-
-
-#backup: a veces cuenta mal porque está pisando la línea cuando encuentra una aparición
-
-#    linea=$0
-#    for (clave in palabrasABuscar)
-#    {    
-#        pos=index(linea, palabrasABuscar[clave])
-#        while(pos!=0)
-#        {
-#            apariciones[clave]++;
-#            linea=substr(linea, pos+1)
-#            pos=index(linea, palabrasABuscar[clave])
-#        }
-#    }
-
-#Backup: no estaba mostrando en orden (de mayor a menor apariciones)
-#END{
-#    for (clave in palabrasABuscar)
-#    {
-#        printf("%-10s: %d\n", palabrasABuscar[clave], apariciones[clave])
-#    } 
-#}

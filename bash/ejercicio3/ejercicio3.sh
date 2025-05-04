@@ -1,6 +1,14 @@
 #!/bin/bash
+########################################
+#INTEGRANTES DEL GRUPO
+# MARTINS LOURO, LUCIANO AGUSTÍN
+# PASSARELLI, AGUSTIN EZEQUIEL
+# WEIDMANN, GERMAN ARIEL
+# DE SOLAY, FELIX                       
+########################################
 
-#./ejercicio3.sh -d ~/repos/virtu/APL/bash --archivos txt,csv,sh --palabras if,for,else
+
+
 function ayuda() {
     cat << EOF
 ───────────────────────────────────────────────
@@ -28,21 +36,21 @@ EOF
 }
 
 function validaciones(){
-    #$1 = directorio
-    #$2 = archivos
-    #$3 = palabras
-
-    if [[ ! -d "$1" ]];then
-        echo "El directorio especificado no existe. Revisa haber escrito bien la ruta"
+    local directorio="$1"
+    local archivos="$2"
+    local palabras="$3"
+    
+    if [[ ! -d "$directorio" ]];then
+        echo "El directorio "$directorio" no existe. Revisa haber escrito bien la ruta"
         exit 1
     fi
 
-    if [[ -z "$2" ]];then
+    if [[ -z "$archivos" ]];then
         echo "No se cargaron extensiones para buscar"
         exit 2
     fi
 
-    if [[ -z "$3" ]];then
+    if [[ -z "$palabras" ]];then
         echo "No se cargaron palabras para buscar"
         exit 3
     fi
@@ -63,22 +71,16 @@ do
             
             directorio="$2"
             shift 2
-
-            #echo "El parámetro -d o --directorio tiene el valor $directorio"
             ;;
         -p | --palabras)
             palabra="$2"
             shift 2
-            
-            #echo "El parámetro -p o --palabras tiene el valor $palabra"
             ;;
         
         -a | --archivos)
             archivos=()
             archivo="$2"
             shift 2
-            
-            #echo "El parámetro -a o --archivos tiene el valor $archivo"
             ;;         
         -h | --help)
             ayuda
@@ -95,19 +97,32 @@ do
     esac
 done
 
-validaciones $directorio $archivo $palabra
+validaciones "$directorio" "$archivo" "$palabra"
+
 
 #IFS: Internal field separator, en este caso separa por comas. -r le dice que no interprete los \ como caracteres de escape. -a le dice que el contenido va 
 # a ser guardado en un array llamado archivos. <<< "$archivo" le indica de donde viene el input de datos
 IFS=',' read -r -a archivos <<< "$archivo"
 num=0
+existe=0
 while [[ num -lt ${#archivos[@]} ]]
 do
     archivos[num]="*.${archivos[num]}"
+    #Hago una verificacion de que al menos existe una extension en el directorio. Find de por si busca de manera recursiva
+     if [[ "$existe" -eq 0 ]];then
+        encuentraExtension=$(find "$directorio" -name "${archivos[num]}" -type f)
+        if [[ "$encuentraExtension" ]];then
+            (( existe += 1 ))
+        fi
+    fi
+
     (( num += 1 ))
 done
 
-#echo "Archivo:  ${archivos[@]}"
+if [[ $existe -eq 0 ]];then
+    echo "No existe ningún archivo con la/s extension/es seleccionada/s en el directorio provisto"
+    exit 5
+fi
 
 num=0
 aux=()
@@ -115,19 +130,10 @@ while [[ num -lt ${#archivos[@]} ]]
 do
      # Mapfile guarda en el array "encontrados" el resultado del comando find indicado. El -t hace que no ponga los saltos de linea sino que los separe con un espacio
     mapfile -t encontrados < <(find "$directorio" -name "${archivos[num]}")
-    #va con <() en vez de `` porque con el primero la salida de mapfile va a ser tomada como un archivo con multiples lineas y a partir de ahi lo puede procesar.
-    #hacerlo con `` hace que sea una cadena, con lo que mapfile no puede trabajar
 
-    # echo "${encontrados[@]}"
-    #aux+=`find $directorio -name "${archivos[num]}"` #Esta fue la forma original que lo pensé
-    
     aux+=("${encontrados[@]}")
 
     (( num += 1 ))
 done
-
-#aux=`grep -r -l .txt ~/repos/virtu/APL/bash` 
-#aux=`find $directorio -name "*.txt"`
-#echo "aux final: ${aux[@]}"
 
 awk -F' ' -v pals="$palabra" -f script.awk "${aux[@]}"
