@@ -31,10 +31,18 @@
 .EXAMPLE
     ./ejercicio5.ps1 -id "11,22" -name "banana,orange"
 #>
-
+[CmdletBinding(DefaultParameterSetName = 'id')]
 param (
+    [Parameter(Mandatory,ParameterSetName = 'id')]
+    [Parameter(Mandatory,ParameterSetName = 'idName')]
+    [ValidateRange("positive")]
     [int[]]$id,
+
+    [Parameter(Mandatory,ParameterSetName = 'name')]
+    [Parameter(Mandatory,ParameterSetName = 'idName')]
+    [ValidateNotNullOrWhiteSpace()]
     [string[]]$name,
+
     [switch]$help
 )
 
