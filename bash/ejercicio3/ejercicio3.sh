@@ -137,3 +137,4 @@ do
 done
 
 awk -F' ' -v pals="$palabra" -f script.awk "${aux[@]}"
+exit 0
