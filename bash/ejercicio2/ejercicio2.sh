@@ -1,5 +1,11 @@
 #!/bin/bash
-
+########################################
+#INTEGRANTES DEL GRUPO
+# MARTINS LOURO, LUCIANO AGUSTÍN
+# PASSARELLI, AGUSTIN EZEQUIEL
+# WEIDMANN, GERMAN ARIEL
+# DE SOLAY, FELIX                       
+########################################
 function ayuda() {
     cat << EOF
 ───────────────────────────────────────────────
@@ -55,16 +61,16 @@ function validaciones(){
     fi
 
     if [[ ! "$matriz" =~ \.txt$ ]]; then
-        echo "El archivo no tiene extensión .txt"
+        echo "El directorio de la matriz no tiene extensión .txt"
         exit 3
     fi
 
     if [[ $(basename "$matriz" | grep -o "\." | wc -l) -gt 1 ]]; then
-        echo "El archivo tiene una doble extensión"
+        echo "El directorio de la matriz tiene una doble extensión"
         exit 4
     fi
 
-    if [[ -n "$producto"  &&  "$pantalla" == "true" ]]; then
+    if [[ -n "$producto"  &&  "$trasponer" == "true" ]]; then
         echo "Solo se puede trasponer la matriz o realizar producto por un escalar"
         exit 5
     fi
@@ -74,7 +80,7 @@ function validaciones(){
         exit 6
     fi
 
-    if [[ ${#separador} -gt 1 ]];then #funciona como un strlen de $4
+    if [[ ${#separador} -gt 1 ]];then #funciona como un strlen de $separador
         echo "El caracter separador solo puede ser un único caracter"
         exit 7
     fi
@@ -107,27 +113,19 @@ do
             
             matriz="$2"
             shift 2
-
-            #echo "El parámetro -m o --matriz tiene el valor $matriz"
             ;;
         -p | --producto)
             productoEscalar="$2"
             shift 2
-            
-            #echo "El parámetro -p o --producto tiene el valor $productoEscalar"
             ;;
         
         -t | --trasponer)
             trasponer="true"
             shift 
-            
-            #echo "Se selecciono el parámetro -t o --trasponer"
             ;;   
         -s | --separador)
             separador="$2"
             shift 2
-            
-            #echo "El parámetro -s o --separador tiene el valor $separador"
             ;;         
         -h | --help)
             ayuda
@@ -146,8 +144,6 @@ done
 
 validaciones "$matriz" "$productoEscalar" "$trasponer" "$separador"
 
-#validarPathing
-#Falta validar el pathing, podria ir simplemente en las validaciones pero lo dejo como cosa aparte para validarlo
 if [[ $productoEscalar == "" ]];
 then
     opcion="trasponer"
@@ -155,7 +151,6 @@ else
     opcion=$productoEscalar;
 fi
 
-#obtenerRutaSalida
 nombre_archivo=$(basename "$matriz")
 directorio_matriz=$(dirname "$matriz")
 
