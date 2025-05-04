@@ -1,5 +1,11 @@
 #!/bin/bash
-
+########################################
+#INTEGRANTES DEL GRUPO
+# MARTINS LOURO, LUCIANO AGUSTÍN
+# PASSARELLI, AGUSTIN EZEQUIEL
+# WEIDMANN, GERMAN ARIEL
+# DE SOLAY, FELIX                       
+########################################
 ##---------------------------------------FUNCIONES---------------------------------------
 function ayuda() {
     cat << EOF
@@ -48,23 +54,23 @@ function validaciones()
     local archivo="$2"
     local pantalla="$3"
 
-    if [[ -z "$archivo" && -z "$pantalla" ]]; then
+    if [[ -z "$archivo" &&  "$pantalla" != "true" ]]; then
         echo "No se cargó un archivo de salida ni se pidió mostrar por pantalla"
         exit 1
     fi
 
     if [[ ! -s "$directorio" ]]; then
-        echo "El archivo no existe o está vacío"
+        echo "El directorio de entrada no existe o está vacío"
         exit 2
     fi
 
     if [[ "${directorio##*.}" != "csv" ]]; then
-        echo "El archivo no es del tipo CSV (Valores separados por comas)"
+        echo "El directorio de entrada no es del tipo CSV (Valores separados por comas)"
         exit 3
     fi
 
     if [[ $(basename "$directorio" | grep -o "\." | wc -l) -gt 1 ]]; then
-        echo "El archivo tiene una doble extensión"
+        echo "El directorio de entrada tiene una doble extensión"
         exit 4
     fi
 
@@ -109,20 +115,14 @@ do
             
             directorio="$2"
             shift 2
-
-#            echo "El parámetro -d o --directorio tiene el valor $directorio"
             ;;
         -a | --archivo)
             archivo="$2"
             shift 2
-            
-#            echo "El parámetro -a o --archivo tiene el valor $archivo"
             ;;
         -p | --pantalla)
             pantalla="true"
             shift 
-            
-#            echo "Se selecciono el parámetro -p o --pantalla"
             ;;            
         -h | --help)
             ayuda
@@ -139,14 +139,13 @@ do
     esac
 done
 
-#Realizamos todas las validaciones de los datos
-validaciones $directorio $archivo $pantalla
+
+validaciones "$directorio" "$archivo" "$pantalla"
 
 ##---------------------------------------RESOLUCION---------------------------------------
 
 echo "Procesando AWK..."
 
-#aca iria una funcion que me diga si va el pathing a un archivo o se muestra por pantalla
 #validar el JSON si se eligió archivo y no pantalla
 if [[ "$pantalla" == "true" ]]; then
     awk -F, -v ruta="/dev/stdout" -f script.awk "$directorio"

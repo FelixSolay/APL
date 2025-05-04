@@ -2,13 +2,6 @@ BEGIN{
     print "Inicializando el procesamiento de datos..."
 }
 
-    # if(id ~ /^[0-9]+$/ && fecha ~ /^[0-9]{4}\/(0[1-9]|1[0-2])\/(0[1-9]|[12][0-9]|3[0-1])$/ && 
-    # hora ~ /([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]/ && 
-    # (direccion == "Norte" || direccion == "Sur" || direccion == "Este" || direccion == "Oeste") && 
-    # temp ~ /[0-9]+.[0-9]+/)
-    #     return "valido"
-    # return "invalido"
-
 function validarParametros(id, fecha, hora, direccion, temp)
 {
     cadena = ""
@@ -66,9 +59,7 @@ function validarParametros(id, fecha, hora, direccion, temp)
     }
     else 
     {
-        lineasConError++
         printf("%s", mensajeSalida);
-        #Aca lo podemos printear o redirigir a un archivo tipo errores.log
     }
 }
 
@@ -151,41 +142,3 @@ END{
 
     print "Procesamiento de Datos Finalizado."
 }
-
-
-
-#backup de la lógica de Agus, de alguna manera está fallando en el momento de poner la coma al final, estoy buscando otra forma de iterar
-#        #Necesito iterar alrededor de la clave compuesta. No encontre mejor forma de hacer esto sin reescribir todo el codigo
-#        vectorDirecciones["Sur"]++
-#        vectorDirecciones["Norte"]++
-#        vectorDirecciones["Este"]++
-#        vectorDirecciones["Oeste"]++
-#        n=0; #Necesitamos un contador para determinar cuando lleguemos al ultimo elemento porque no lleva ,
-#         print "{" > ruta # >ruta vendria a ser como un w en c, si no existe lo crea y si existe lo sobreescrie
-#         printf("\t\"fechas\":{\n") >> ruta #>>ruta seria como un append, le suma al final del archivo
-#         for (clave in temperaturaMin)
-#        {                      
-#            split(clave,partes, SUBSEP);
-#            dia=partes[1]
-#
-#            if(diaAct!=dia)
-#            {
-#                n+=4; 
-#                 printf("\t\t\"%s\": {\n", dia) >>ruta
-#                for(dir in vectorDirecciones)
-#                {
-#                    printf("\t\t\t\"%s\": {\n", dir) >>ruta
-#                    clave = dia SUBSEP dir
-#                    printf("\t\t\t\t\"Min\": %d,\n", temperaturaMin[clave]) >>ruta
-#                    printf("\t\t\t\t\"Max\": %d,\n", temperaturaMax[clave]) >>ruta
-#                    printf("\t\t\t\t\"Promedio\": %d\n", cantApariciones[clave]==0?0:suma[clave]/cantApariciones[clave]) >>ruta
-#                    printf("\t\t\t%s\n", dir=="Este"?"}":"},") >>ruta
-#                }
-#                diaAct=dia
-#                printf("\t\t%s\n", n==(NR-lineasConError)?"}":"},") >>ruta #Si es el ultimo archivo no tiene que meter una coma, si no es el ultimo si
-#            }
-#            
-#        }
-#         
-#         printf("\t}\n") >> ruta
-#         printf("}\n") >> ruta
