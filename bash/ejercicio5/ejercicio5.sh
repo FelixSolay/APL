@@ -1,4 +1,13 @@
 #!/bin/bash
+
+########################################
+#INTEGRANTES DEL GRUPO
+# MARTINS LOURO, LUCIANO AGUSTÍN
+# PASSARELLI, AGUSTIN EZEQUIEL
+# WEIDMANN, GERMAN ARIEL
+# DE SOLAY, FELIX                       
+########################################
+
 #librerias necesarias jq
 #sudo apt-get install jq
 
@@ -15,7 +24,7 @@ function ayuda() {
  
  Parámetros:
   -i, --id           Id/s de las frutas a buscar
-  -n, --name         Nombre/s de als frutas a buscar
+  -n, --name         Nombre/s de las frutas a buscar
 
  Aclaraciones:
   Una vez obtenida la informacion, se generará esta a modo de cache para no volver a consultarse en la api.
@@ -104,10 +113,9 @@ declare -A cacheERROR
 apiFrutas="https://www.fruityvice.com/api/fruit/"
 cacheFile="./cacheFile.txt"
 
-#Se inicia o carga el cache
-if [ ! -f $cacheFile ]; then #Si el cacheFile no existe lo creo
+#Se inicia o carga el cache. Si $cacheFile ya existe, touch no hace nada
     touch $cacheFile
-fi
+
 
 if [ -s $cacheFile ]; then #Si el cacheFile no esta vacio cargo el array cacheJSON
     while read linea; do
@@ -154,11 +162,11 @@ done
 
 #Me fijo por el parameto name
 for i in "${nameUnicos[@]}"; do
-    if [ $i == "0" ]; then
+    if [ "$i" == "0" ]; then
         continue
     fi
     for idKey in "${!cacheJSON[@]}"; do
-        if [ $i == $(echo ${cacheJSON[${idKey}]} | jq -r '.name') ]; then
+        if [ "$i" == $(echo ${cacheJSON[${idKey}]} | jq -r '.name') ]; then
             key="$idKey"
             break
         fi
@@ -187,10 +195,11 @@ done
 
 
 #Reescribo el cacheFile con mi cacheJSON actualizado
-rm $cacheFile
-touch $cacheFile
+
+> "$cacheFile"  # Funciona como hacer rm y touch pero evita operaciones sobre el filesystem, lo que la hace mas eficiente
+
 for llave in "${!cacheJSON[@]}"; do
-    echo ${cacheJSON["$llave"]} >> $cacheFile
+    echo "${cacheJSON["$llave"]}" >> $cacheFile
 done
 
 
