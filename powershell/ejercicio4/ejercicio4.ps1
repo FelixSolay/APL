@@ -39,11 +39,24 @@
 
 #>
 param(
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrWhiteSpace()]
+    [ValidateScript({ Test-Path $_ })]
     [Alias("directorio")][string]$directorioPS,
+
+    [Parameter(Mandatory)]
+    [ValidateNotNullOrWhiteSpace()]
+    [ValidateScript({ $_ -gt 0 })]
     [Alias("salida")][string]$salidaPS,
+
+    [Parameter(Mandatory)]
+    [ValdiateNotNull()]
+    [Alias("cantidad")][System.int32]$cantidadPS,
+    
+    [Parameter()]
     [Alias("kill")][switch]$killPS,
-    [Alias("help")][switch]$helpPS,
-    [Alias("cantidad")][System.int32]$cantidadPS
+    
+    [Alias("help")][switch]$helpPS
 )
 $global:ordenados = 0 #Necesito que sea global para que contemple los archivos ordenados en el barrido inicial del daemon
 
