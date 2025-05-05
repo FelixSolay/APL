@@ -1,3 +1,10 @@
+########################################
+#INTEGRANTES DEL GRUPO
+# MARTINS LOURO, LUCIANO AGUSTÍN
+# PASSARELLI, AGUSTIN EZEQUIEL
+# WEIDMANN, GERMAN ARIEL
+# DE SOLAY, FELIX                       
+########################################
 <#
 .SYNOPSIS
     Script del ejercicio 3 de la APL 1
@@ -19,7 +26,8 @@
     Muestra esta ayuda.
 
 .EXAMPLE
-    ./ejercicio3.ps1 -d /ruta/al/directorio --archivo txt,csv,ps1 -p for,else
+    ./ejercicio3.ps1 -d /ruta/al/directorio -archivo txt,csv,ps1 -p for,else
+    ./ejercicio3.ps1 -d . -archivo txt,csv,ps1 -p for,else
 #>
 
 param (
@@ -78,8 +86,8 @@ foreach ($ext in $extensiones) {
     # -ErrorAction SilentlyContinue : para no mostrar errorres, por ejemplo si no encuentra nada
     $archivosEncontrados += Get-ChildItem -Path $Directorio -Recurse -Filter $ext -File -ErrorAction SilentlyContinue
 }
-#armar vector de apariciones por palabras
-$apariciones = @{}
+#armar vector de apariciones por palabras. Tenemos que armarlo asi para que sea case sensitive
+$apariciones = New-Object System.Collections.Hashtable ([System.StringComparer]::Ordinal)
 foreach ($palabra in $palabras) {
     $apariciones[$palabra] = 0
 }
@@ -89,7 +97,9 @@ foreach ($archivo in $archivosEncontrados) {
         $linea = $_ 
         foreach ($palabra in $palabras) {
             #usamos regex para que tome la palabra completa y no una porcion de la misma
-            $regex = "\b$([regex]::Escape($palabra))\b"
+            $regex = New-Object System.Text.RegularExpressions.Regex ("\b$([regex]::Escape($palabra))\b", [System.Text.RegularExpressions.RegexOptions]::None)
+            #Si se quiere que funcione aún considerando subcadenas dentro de una cadena, sería esta definición
+            #$regex = New-Object System.Text.RegularExpressions.Regex ("$([regex]::Escape($palabra))", [System.Text.RegularExpressions.RegexOptions]::None)
             $apariciones[$palabra] += ([regex]::Matches($linea,$regex)).Count
         }
     }
@@ -99,4 +109,5 @@ $apariciones.GetEnumerator() |
     Sort-Object Value -Descending |
     ForEach-Object { "{0,-10}: {1}" -f $_.Key, $_.Value }
 
+exit 0
 
