@@ -1,4 +1,10 @@
-
+########################################
+#INTEGRANTES DEL GRUPO
+# MARTINS LOURO, LUCIANO AGUSTÍN
+# PASSARELLI, AGUSTIN EZEQUIEL
+# WEIDMANN, GERMAN ARIEL
+# DE SOLAY, FELIX                       
+########################################
 
 <#
 .SYNOPSIS
@@ -42,15 +48,18 @@ param(
     [Parameter(Mandatory)]
     [ValidateNotNullOrWhiteSpace()]
     [ValidateScript({ Test-Path $_ })]
+    [ValidateScript({ (Get-Item $_).PSIsContainer })]
     [Alias("directorio")][string]$directorioPS,
 
     [Parameter(Mandatory)]
     [ValidateNotNullOrWhiteSpace()]
-    [ValidateScript({ $_ -gt 0 })]
+    [ValidateScript({ Test-Path $_ })]
+    [ValidateScript({ (Get-Item $_).PSIsContainer })]
     [Alias("salida")][string]$salidaPS,
 
     [Parameter(Mandatory)]
-    [ValdiateNotNull()]
+    [ValidateNotNullOrWhiteSpace()]
+    [ValidateRange(1, [int]::MaxValue)]
     [Alias("cantidad")][System.int32]$cantidadPS,
     
     [Parameter()]
@@ -58,24 +67,21 @@ param(
     
     [Alias("help")][switch]$helpPS
 )
-$global:ordenados = 0 #Necesito que sea global para que contemple los archivos ordenados en el barrido inicial del daemon
-
+#Tengo que validar parámetros que no puedo validar hasta tenerlos todos, por lo que no puedo validar en param. Además, valida si el proceso está corriendo o no
 function ValidarParametros {
     param(
         [string]$directorio,
         [string]$salida,
-        [System.Boolean]$kill,
-        [switch]$help,
-        [System.int32]$cantidad
+        [System.Boolean]$kill
     )
-
-    if (-not (Test-Path $directorio)) {
-        Write-Error "El directorio de entrada no existe"
-        exit 2
+    
+    if ($kill -and (-not $directorio)) {
+        Write-Error "No se puede usar kill sin indicar un directorio"
+        exit 1
     }
 
     $directorioAbsoluto = (Resolve-Path $directorio).Path
-
+    
     # Definimos nombre de job basado en el path absoluto
     $jobName = "${directorioAbsoluto}_job"
     #Para validar si un job ya esta corriendo en el directorio, primero le asignamos nombreDirectorio_job al crearlo, despues lo buscamos y que su estado sea "running"
@@ -92,30 +98,22 @@ function ValidarParametros {
         else {
             #Si seleccionamos kill y no hay ningun job activo, termina
             Write-Error "No hay ningún job en ejecución para $directorioAbsoluto"
-            exit 3
+            exit 2
         }
     }
     # Si ya hay un job corriendo en el directorio y no seleccionamos kill, termina el proceso
     if ($jobExistente) {
         Write-Error "Ya hay un job ejecutándose para el directorio $directorioAbsoluto."
+        exit 3
+    }
+
+
+    $salidaAbsoluta = (Resolve-Path $salida).Path
+    if ("$directorioAbsoluto" -eq "$salidaAbsoluta"){
+        Write-Error "El directorio de entrada y de salida no puede ser el mismo"
         exit 4
     }
 
-    if (-not (Test-Path $salida) -and (-not $kill)) {
-        Write-Error "El directorio de salida no existe"
-        exit 5
-    }
-
-
-    if ($kill -and (-not $directorio)) {
-        Write-Error "No se puede usar kill sin indicar un directorio"
-        exit 6
-    }
-
-    if ($cantidad -le 0) {
-        Write-Error "La cantidad debe ser un numero entero positivo"
-        exit 7
-    }
 }
 function ProcesarArchivo {
     param(
@@ -158,23 +156,7 @@ function ProcesarArchivo {
         catch {
             return
         }
-        # Incrementa el contador global de archivos ordenados
-        $global:ordenados++
-
-        # Si se llegó a la cantidad requerida de archivos movidos, se empaqueta todo
-        if ($global:ordenados -eq $cantidad) {
-
-            $nombreDir = Split-Path -Path (Get-Location) -Leaf
-            $fecha = Get-Date -Format "yyyyMMdd_HHmmss"
-            $nombreZip = "${nombreDir}_${fecha}.zip"
-            $rutaZip = Join-Path -Path $salida -ChildPath $nombreZip
-
-            # Comprime todo el contenido del directorio en el ZIP
-            Compress-Archive -Path "$directorio\*" -DestinationPath $rutaZip -Force
-
-            # Resetea el contador
-            $global:ordenados = 0
-        }
+        
     }
 }
 
@@ -183,12 +165,30 @@ if ($HelpPS) {
     exit 0
 }
 
-ValidarParametros -directorio $directorioPS -salida $salidaPS -kill  $killPS -cantidad $cantidadPS
+ValidarParametros -directorio $directorioPS -salida $salidaPS -kill  $killPS 
 
 # Barrido inicial de los archivos que haya en el directorio. Despues de esto se queda el FSwatcher
 $archivosExistentes = Get-ChildItem -Path $directorioPS -File
 foreach ($archivo in $archivosExistentes) {
     ProcesarArchivo -rutaArchivo $archivo.FullName -directorio $directorioPS -salida $salidaPS -cantidad $cantidadPS
+    $ordenados++
+    Write-Host "Ordenados es: $ordenados"
+    if ($ordenados -eq $cantidadPS) {
+        Write-Host "Entre aca "
+        $nombreDir = Split-Path -Path (Get-Location) -Leaf
+        $fecha = Get-Date -Format "yyyyMMdd_HHmmss"
+        $nombreZip = "${nombreDir}_${fecha}.zip"
+        $rutaZip = Join-Path -Path $salidaPS -ChildPath $nombreZip
+        
+        Write-Host "Directorio actual: $(Get-Location)"
+
+        # Comprime todo el contenido del directorio en el ZIP
+        Compress-Archive -Path "$directorioPS\*" -DestinationPath $rutaZip -Force
+
+        # Resetea el contador
+        $ordenados = 0
+    }
+
 }
 
 #El nombre del job es la ruta donde se ejecuta y _job
@@ -216,7 +216,7 @@ Start-Job -Name "$nombreJob" -ScriptBlock {
         if (-not (Test-Path $archivo)) {
             return
         }
-
+        #Por un asunto de que la función no existe adentro del scope del $onChange no la puedo llamar, asi que debo copiarla tal cual
         if (-not (Get-Item $archivo).PSIsContainer) {
             $extension = [IO.Path]::GetExtension($archivo).TrimStart(".")
             $destino = Join-Path -Path $directorio -ChildPath $extension
@@ -269,6 +269,6 @@ Start-Job -Name "$nombreJob" -ScriptBlock {
         Wait-Event -Timeout 1 | Out-Null
     }
 
-} -ArgumentList $directorioPS, $salidaPS, $cantidadPS, $global:ordenados | Out-Null
+} -ArgumentList $directorioPS, $salidaPS, $cantidadPS, $ordenados | Out-Null
 
 
