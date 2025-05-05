@@ -1,3 +1,10 @@
+########################################
+#INTEGRANTES DEL GRUPO
+# MARTINS LOURO, LUCIANO AGUSTÍN
+# PASSARELLI, AGUSTIN EZEQUIEL
+# WEIDMANN, GERMAN ARIEL
+# DE SOLAY, FELIX                       
+########################################
 <#
 .SYNOPSIS
     Script del ejercicio 1 de la APL 1.
@@ -52,62 +59,6 @@ param(
     [Alias("p")][switch]$Pantalla,
     [Alias("h")][switch]$Help
 )
-function ValidarParametros {
-    param(
-        [string]$Directorio,
-        [string]$Archivo,
-        [bool]$Pantalla
-    )
-
-    if (-not $Archivo -and -not $Pantalla) {
-        Write-Error "No se cargó un archivo de salida ni se pidió mostrar por pantalla"
-        exit 1
-    }
-
-    if (-not (Test-Path $Directorio) -or (Get-Content $Directorio).Length -eq 0) {
-        Write-Error "El archivo no existe o está vacío"
-        exit 2
-    }
-
-    if ([System.IO.Path]::GetExtension($Directorio) -ne ".csv") {
-        Write-Error "El archivo no es del tipo CSV (Valores separados por comas)"
-        exit 3
-    }
-
-    $NombreArchivo = [System.IO.Path]::GetFileName($Directorio)
-    if ($NombreArchivo -match '\.csv\.\w+$') {
-        Write-Error "El archivo tiene una doble extensión"
-        exit 4
-    }
-
-    if ($Archivo -and $Pantalla) {
-        Write-Error "Solo se puede mostrar la salida por archivo o por pantalla, no ambos"
-        exit 5
-    }
-    #si por ejemplo creamos \home\usuario\salida.json, esta validacion es que \home\usuario exista y ademas que el archivo sea un JSON
-    if ($Archivo) {
-        
-        $directorioPadre = Split-Path -Path $Archivo -Parent
-
-        
-        if (-not (Test-Path $directorioPadre)) {
-            Write-Error "El directorio '$directorioPadre' no existe."
-            exit 6
-        }
-
-        
-        if (-not (Get-Item $directorioPadre).PSIsContainer) {
-            Write-Error "La ruta '$directorioPadre' no es un directorio."
-            exit 7
-        }
-
-        if (-not ($Archivo -match "\.json$")) {
-            Write-Error "El archivo '$Archivo' debe tener extensión .json."
-            exit 8
-        }
-    }
-}
-
 function ValidarJSON {
     param([string]$RutaArchivo)
     try {
@@ -224,6 +175,6 @@ if ($Help) {
     Get-Help -Detailed $MyInvocation.MyCommand.Path
     exit 0
 }
-ValidarParametros -Directorio $Directorio -Archivo $Archivo -Pantalla $Pantalla
+
 ProcesarCSV -RutaCSV $Directorio -ArchivoSalida $Archivo -Pantalla:$Pantalla
 exit 0
