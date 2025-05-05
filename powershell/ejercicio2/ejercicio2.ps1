@@ -1,3 +1,10 @@
+########################################
+#INTEGRANTES DEL GRUPO
+# MARTINS LOURO, LUCIANO AGUSTÍN
+# PASSARELLI, AGUSTIN EZEQUIEL
+# WEIDMANN, GERMAN ARIEL
+# DE SOLAY, FELIX                       
+########################################
 <#
 .SYNOPSIS
     Script del ejercicio 2 de la APL 1
@@ -56,58 +63,14 @@ param(
     [Parameter(Mandatory, ParameterSetName = "Transponer")]
     [Alias("t")][switch]$trasponer,
 
-    [Parameter()]
+    [Parameter(Mandatory)]
     [ValidateNotNullOrWhiteSpace()]
-    [ValidateScript({ -not ($_ -match '^-?\d+$') })]
+    [ValidateScript({ $_ -match '^[^0-9-]{1}$' })]
     [ValidateScript({ $_.Length -eq 1 })]
-    [Alias("s")][string]$separador = "|",
+    [Alias("s")][string]$separador,
 
     [Alias("h")][switch]$help
 )
-
-function ValidarParametros {
-    param (
-        [string]$matriz,
-        [Nullable[Double]]$producto,
-        [bool]$trasponer,
-        [string]$separador
-    )
-
-    if (-not (Test-Path $matriz) -or (Get-Item $matriz).Length -eq 0) {
-        Write-Error "El archivo no existe o está vacío."; exit 2
-    }
-
-    if (-not $matriz.EndsWith(".txt")) {
-        Write-Error "El archivo debe tener extensión .txt"; exit 3
-    }
-
-    $NombreArchivo = [System.IO.Path]::GetFileName($matriz)
-    if ($NombreArchivo -match '\.txt\.\w+$') {
-        Write-Error "El archivo tiene una doble extensión"
-        exit 4
-    }
-
-    if ($producto -and $trasponer) {
-        Write-Error "No se puede hacer trasposición y producto escalar a la vez"; exit 5
-    }
-
-    if ([string]::IsNullOrWhiteSpace($separador) -or $separador -match '^-?\d+$') {
-        Write-Error "Separador no puede estar vacío, ser un número o '-'"; exit 6
-    }
-
-    if ($separador.Length -ne 1) {
-        Write-Error "El separador debe ser un único carácter"; exit 7
-    }
-
-    if (-not (Get-Content $matriz | Select-String -SimpleMatch $separador)) {
-        Write-Error "El separador '$separador' no aparece en el archivo"; exit 8
-    }
-
-    if ($producto -and -not ($producto -match '^-?\d+(\.\d+)?$')) {
-        Write-Error "El producto escalar debe ser numérico"; exit 9
-    }
-}
-
 function ProcesarMatriz {
     param (
         [string]$archivo,
@@ -148,15 +111,6 @@ function ProcesarMatriz {
 
     if ($trasponer) {
         Write-Host "Seleccionaste trasponer la matriz"
-        #Recorrer cada columna de la matriz original
-        #    $col
-        # _$  [1 2 3]
-        #     [4 5 6]
-        #
-        # $resultado = 1 | 4
-        #              2 | 5
-        #              3 | 6
-
         $resultado = for ($col = 0; $col -lt $numCols; $col++) {
             #Transposición -> Toma el valor de la columna actual $col, para cada fila $_[$col]
             ($matriz | ForEach-Object { $_[$col] }) -join $sep
@@ -180,7 +134,10 @@ if ($Help) {
     exit 0
 }
 
-ValidarParametros -matriz $matriz -producto $producto -trasponer $trasponer -separador $separador
+if (-not (Get-Content $matriz | Select-String -SimpleMatch $separador)) {
+    Write-Error "El separador '$separador' no aparece en el archivo"; 
+    exit 8
+}
 
 #Similar al basename y dirname de bash, para armar la ruta de salida
 $rutaAbsolutaMatriz = (Resolve-Path $matriz).Path
