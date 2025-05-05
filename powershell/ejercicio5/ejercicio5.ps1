@@ -1,3 +1,10 @@
+########################################
+#INTEGRANTES DEL GRUPO
+# MARTINS LOURO, LUCIANO AGUSTÍN
+# PASSARELLI, AGUSTIN EZEQUIEL
+# WEIDMANN, GERMAN ARIEL
+# DE SOLAY, FELIX                       
+########################################
 <#
 .SYNOPSIS
     Script del ejercicio 5 de la APL 1.
@@ -29,7 +36,7 @@
     protein: 1
     
 .EXAMPLE
-    ./ejercicio5.ps1 -id "11,22" -name "banana,orange"
+    ./ejercicio5.ps1 -id 11,22 -name banana,orange
 #>
 [CmdletBinding(DefaultParameterSetName = 'id')]
 param (
@@ -50,24 +57,6 @@ param (
 if ($Help) {
     Get-Help -Detailed $MyInvocation.MyCommand.Path
     exit 0
-}
-
-
-if (-not $id -and -not $name) {
-    Write-Error "No se cargo ninguna id ni ningun nombre"
-    exit 1
-}
-
-# Validar que los IDs sean positivos
-if ($id) {
-    foreach ($i in $id) {
-        #DEBUG
-        #Write-Host "Id numero: $i"
-        if ($i -lt 0) {
-            Write-Error "ID inválido: $i. Debe ser un número entero positivo"
-            exit 2
-        }
-    }
 }
 
 # Eliminar duplicados
@@ -94,15 +83,13 @@ $apiFrutas = "https://www.fruityvice.com/api/fruit/"
 foreach ($id in $idUnicos.Keys) {
     if (-not $cacheJSON.ContainsKey($id)) {
         try {
-            #DEBUG
-            #Write-Host "intentando conectar con... $apiFrutas$id"
             $json = Invoke-RestMethod -Uri "$apiFrutas$id" -ErrorAction Stop
         } catch {
-            $cacheERROR["$id"] = "Id ${id}: ERROR 6, No se pudo conectar a la API. Verifique su conexión a Internet"
-            continue
-        }
-        if ($json.error -eq "Not found") {
-            $cacheERROR["$id"] = "Id ${id}: Id no encontrada o válida"
+            if ($_.Exception.Response -and $_.Exception.Response.StatusCode.Value__ -eq 404) {
+                $cacheERROR["$id"] = "Id ${id}: Id no encontrada o válida"
+            } else {
+                $cacheERROR["$id"] = "No se pudo conectar a la API. Verifique su conexión a Internet"
+            }
             continue
         }
         $cacheJSON["$($json.id)"] = $json
@@ -155,14 +142,14 @@ foreach ($n in $nameUnicos.Keys) {
         try {
             $json = Invoke-RestMethod -Uri "$apiFrutas$n" -ErrorAction Stop
         } catch {
-            $cacheERROR["$n"] = "Fruta ${n}: ERROR 6, No se pudo conectar a la API. Verifique su conexión a Internet"
+            if ($_.Exception.Response -and $_.Exception.Response.StatusCode.Value__ -eq 404) {
+                $cacheERROR["$n"] = "Nombre ${n}: Nombre no encontrado o válido"
+            } else {
+                $cacheERROR["$id"] = "No se pudo conectar a la API. Verifique su conexión a Internet"
+            }
             continue
         }
 
-        if ($json.error -eq "Not found") {
-            $cacheERROR["$n"] = "Fruta ${n}: Fruta no encontrada o válida"
-            continue
-        }
 
         $cacheJSON["$($json.id)"] = $json
         $salida = @{
@@ -186,3 +173,5 @@ foreach ($e in $cacheERROR.Keys) {
 
 # Guardar cache
 $cacheJSON.Values | ForEach-Object { $_ | ConvertTo-Json -Compress } | Set-Content $cacheFile
+
+exit 0
