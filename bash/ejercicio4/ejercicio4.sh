@@ -38,8 +38,8 @@ function ayuda() {
 
 
 Ejemplos de uso:
-  $ ./demonio.sh -d ../descargas --salida ../backup -c 3
-  $ ./demonio.sh -d ../documentos --salida ../backup --cantidad 3
+  $ ./ejercicio4.sh -d ./descargas --salida ./backup -c 3
+  $ ./ejercicio4.sh -d ../documentos --salida ../backup --cantidad 3
 
 Aclaraciones:
   Debido al uso de inotify-tools, si estás usando un WSL solamente va a poder detectar los cambios que hagas fuera de linux si estas en el directorio home.
@@ -148,22 +148,57 @@ function moverArchivos(){
     fi
 }
 
+# function ordenarArchivosPorExtension() {
+#     #Primero tiene que hacer un barrido inicial y despues se queda escuchando
+#     cd "$directorio" || { echo "No se pudo cambiar de directorio"; exit 1; }
+#     cantidadArchivosOrdenados=0
+#     mapfile -t archivos < <(find "$directorio" -maxdepth 1 -type f) #el maxdepth es para que el find no haga busqueda recursiva
+#     for archivo1 in "${archivos[@]}"; do
+#         moverArchivos "$archivo1"
+#     done
+
+#     inotifywait -m -e create -e moved_to -e close_write --format "%w%f" "$directorio" 2>/dev/null | while read archivo2
+#     do
+#         sleep 0.5 #Sin este sleep apenas pones el archivo lo mueve y vscode puede tirar un error. No es realmente necesario
+#         if [[ -f "$archivo2" ]]; then #Por cómo se dan los eventos en vscode, un solo movimiento se puede triggerear varias veces, asi que hay que validar
+#             moverArchivos "$archivo2"
+#         fi
+#     done
+# }
+
 function ordenarArchivosPorExtension() {
-    #Primero tiene que hacer un barrido inicial y despues se queda escuchando
     cd "$directorio" || { echo "No se pudo cambiar de directorio"; exit 1; }
     cantidadArchivosOrdenados=0
-    mapfile -t archivos < <(find "$directorio" -maxdepth 1 -type f) #el maxdepth es para que el find no haga busqueda recursiva
+
+    # Primer barrido inicial
+    mapfile -t archivos < <(find "$directorio" -maxdepth 1 -type f)
     for archivo1 in "${archivos[@]}"; do
         moverArchivos "$archivo1"
     done
 
-    inotifywait -m -e create -e moved_to -e close_write --format "%w%f" "$directorio" 2>/dev/null | while read archivo2
-    do
-        sleep 0.5 #Sin este sleep apenas pones el archivo lo mueve y vscode puede tirar un error. No es realmente necesario
-        if [[ -f "$archivo2" ]]; then #Por cómo se dan los eventos en vscode, un solo movimiento se puede triggerear varias veces, asi que hay que validar
-            moverArchivos "$archivo2"
-        fi
-    done
+    # Detectar si directorio está en /mnt/
+    #inotifytools solamente funciona en Linux o en directorios de Linux, por ejemplo el home. Si no funciona hay que hacer un polling manual
+    if [[ "$directorio" == /mnt/* ]]; then
+        #echo "Directorio en /mnt/, usando modo polling porque inotify no funciona aquí."
+
+        while true; do
+            mapfile -t archivosNuevos < <(find "$directorio" -maxdepth 1 -type f)
+            for archivo2 in "${archivosNuevos[@]}"; do
+                moverArchivos "$archivo2"
+            done
+            sleep 2
+        done
+    else
+        echo "Usando inotify para escuchar cambios en $directorio."
+
+        inotifywait -m -e create -e moved_to -e close_write --format "%w%f" "$directorio" 2>/dev/null | while read archivo2
+        do
+         sleep 0.5 #Sin este sleep apenas pones el archivo lo mueve y vscode puede tirar un error. No es realmente necesario
+         if [[ -f "$archivo2" ]]; then #Por cómo se dan los eventos en vscode, un solo movimiento se puede triggerear varias veces, asi que hay que validar
+             moverArchivos "$archivo2"
+         fi
+        done
+    fi
 }
 
  function matarProcesos(){
