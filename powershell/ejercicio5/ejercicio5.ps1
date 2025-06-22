@@ -1,75 +1,67 @@
-########################################
-#INTEGRANTES DEL GRUPO
-# MARTINS LOURO, LUCIANO AGUSTÍN
-# PASSARELLI, AGUSTIN EZEQUIEL
-# WEIDMANN, GERMAN ARIEL
-# DE SOLAY, FELIX                       
-########################################
 <#
 .SYNOPSIS
     Script del ejercicio 5 de la APL 1.
 
 .DESCRIPTION
-    El script debe permitir consultar informacion relacionada a los nutrientes de las frutas a travez
-    de la api Fruityvice. Se permitira buscar informacion a traves de los ids o nombres o ambos a la
-    vez.
+    El script debe permitir consultar informacion relacionada a los nutrientes de las frutas a travez de la api Fruityvice. Se permitira buscar informacion a traves de los ids o nombres o ambos a la vez.
 
 .PARAMETER id
-    Ruta del directorio a monitorear
+    Id de las frutas a buscar en la API
 
 .PARAMETER name
-    Ruta del directorio en donde se van a crear los backups
-
-.PARAMETER help
-    Muestra esta ayuda.
-
-.NOTES
-    Una vez obtenida la informacion, se generará esta a modo de cache para no volver a consultarse en la api.
-    Se mostrara la informacion con el siguiente formato:
-    id: 2,
-    name: Orange,
-    genus: Citrus,
-    calories: 43,
-    fat: 0.2,
-    sugar: 8.2,
-    carbohydrates: 8.3,
-    protein: 1
+    Nombre de las frutas a buscar en la API
     
 .EXAMPLE
-    ./ejercicio5.ps1 -id 11,22 -name banana,orange
+    ./ejercicio5.ps1 -id 1,2,3
+
+.EXAMPLE
+    ./ejercicio5.ps1 -name banana,orange,pear
+
+.EXAMPLE
+    ./ejercicio5.ps1 -id 1,2,3 -name banana,orange,pear
+
+.NOTES
+    ########################################
+    #INTEGRANTES DEL GRUPO
+    # MARTINS LOURO, LUCIANO AGUSTÍN
+    # PASSARELLI, AGUSTIN EZEQUIEL
+    # WEIDMANN, GERMAN ARIEL
+    # DE SOLAY, FELIX                       
+    ########################################
 #>
 [CmdletBinding(DefaultParameterSetName = 'id')]
 param (
     [Parameter(Mandatory,ParameterSetName = 'id')]
     [Parameter(Mandatory,ParameterSetName = 'idName')]
-    [ValidateRange("positive")]
+    [ValidateRange(1,9999)]
     [int[]]$id,
 
     [Parameter(Mandatory,ParameterSetName = 'name')]
     [Parameter(Mandatory,ParameterSetName = 'idName')]
     [ValidateNotNullOrWhiteSpace()]
-    [string[]]$name,
-
-    [switch]$help
+    [string[]]$name
 )
 
-# MAIN
-if ($Help) {
-    Get-Help -Detailed $MyInvocation.MyCommand.Path
-    exit 0
+#Funcion para mostrar en formato
+function MostrarFruta($f) {
+    Write-Output "id: $($f.id)"
+    Write-Output "name: $($f.name)"
+    Write-Output "genus: $($f.genus)"
+    Write-Output "calories: $($f.nutritions.calories)"
+    Write-Output "fat: $($f.nutritions.fat)"
+    Write-Output "sugar: $($f.nutritions.sugar)"
+    Write-Output "carbohydrates: $($f.nutritions.carbohydrates)"
+    Write-Output "protein: $($f.nutritions.protein)"
+    Write-Output ""
 }
 
-# Eliminar duplicados
-$idUnicos = @{}
-$nameUnicos = @{}
-if ($id) { foreach ($i in $id) { $idUnicos[$i] = $true } }
-if ($name) { foreach ($n in $name) { $nameUnicos[$n] = $true } }
-
-# Cargar cache
+#Variables necesarias
+$apiFrutas = "https://www.fruityvice.com/api/fruit/"
 $cacheFile = "./cacheFile.txt"
 $cacheJSON = @{}
 $cacheERROR = @{}
 
+#Cargar cache
 if (Test-Path $cacheFile) {
     Get-Content $cacheFile | ForEach-Object {
         $json = $_ | ConvertFrom-Json
@@ -77,101 +69,76 @@ if (Test-Path $cacheFile) {
     }
 }
 
-$apiFrutas = "https://www.fruityvice.com/api/fruit/"
+# Eliminar duplicados
+$idUnicos = if ($id) { $id | Select-Object -Unique } else { @() }
+$nameUnicos =  if ($name) { $name | Select-Object -Unique } else { @() }
 
 # Consultar por ID
-foreach ($id in $idUnicos.Keys) {
-    if (-not $cacheJSON.ContainsKey($id)) {
+foreach ($i in $idUnicos) {
+    if (-not $cacheJSON.ContainsKey("$i")) {
         try {
-            $json = Invoke-RestMethod -Uri "$apiFrutas$id" -ErrorAction Stop
+            $json = Invoke-RestMethod -Uri "$apiFrutas$i" -ErrorAction Stop
+            if($json -and $null -ne $json.id) {
+                $cacheJSON["$($json.id)"] = $json
+                MostrarFruta $json
+            } else {
+                $cacheERROR["$i"] = "Id ${i}: Respuesta invalida o vacia de la API"
+                continue
+            }
         } catch {
             if ($_.Exception.Response -and $_.Exception.Response.StatusCode.Value__ -eq 404) {
-                $cacheERROR["$id"] = "Id ${id}: Id no encontrada o válida"
+                $cacheERROR["$i"] = "Id ${i}: Id no encontrada o válida"
             } else {
-                $cacheERROR["$id"] = "No se pudo conectar a la API. Verifique su conexión a Internet"
+                $cacheERROR["$i"] = "No se pudo conectar a la API. Verifique su conexión a Internet"
             }
             continue
         }
-        $cacheJSON["$($json.id)"] = $json
+    } else {
+        MostrarFruta $cacheJSON["$i"]
     }
-
-    $fruta = $cacheJSON[$id]
-    $salida = @{
-        id = $fruta.id
-        name = $fruta.name
-        genus = $fruta.genus
-        calories = $fruta.nutritions.calories
-        fat = $fruta.nutritions.fat
-        sugar = $fruta.nutritions.sugar
-        carbohydrates = $fruta.nutritions.carbohydrates
-        protein = $fruta.nutritions.protein
-    }
-    $salida | ConvertTo-Json -Compress
-
-    foreach ($n in $nameUnicos.Keys) {
-        if ($fruta.name -eq $n) {
-            $nameUnicos[$n] = $null
-        }
-    }
+    #Si la id esta repetida en el nombre ej: -id 1 -name banana, esto eliminaria banana de los parametros
+    $nameFruta = $cacheJSON["$i"].name.ToLower()
+    $nameUnicos = $nameUnicos | Where-Object{$_.ToLower() -ne $nameFruta}
 }
 
 # Consultar por nombre
-foreach ($n in $nameUnicos.Keys) {
-    if (-not $n) { continue }
-
-    $found = $false
-    foreach ($f in $cacheJSON.Values) {
-        if ($f.name -eq $n) {
-            $salida = @{
-                id = $f.id
-                name = $f.name
-                genus = $f.genus
-                calories = $f.nutritions.calories
-                fat = $f.nutritions.fat
-                sugar = $f.nutritions.sugar
-                carbohydrates = $f.nutritions.carbohydrates
-                protein = $f.nutritions.protein
-            }
-            $salida | ConvertTo-Json -Compress
-            $found = $true
-            break
-        }
-    }
-
-    if (-not $found) {
+foreach ($n in $nameUnicos) {
+    #Hay que comparar todo en minuscula
+    $nameMinus = $n.ToLower()
+    $nameCache = $cacheJSON.Values | Where-Object {$_.name.tolower() -eq $nameMinus}
+    if ($nameCache) {
+        MostrarFruta $nameCache
+    } else {
         try {
             $json = Invoke-RestMethod -Uri "$apiFrutas$n" -ErrorAction Stop
+            if($json -and $null -ne $json.id) {
+                $cacheJSON["$($json.id)"] = $json
+                MostrarFruta $json
+            } else {
+                $cacheERROR["$n"] = "Nombre ${n}: Respuesta invalida o vacia de la API"
+                continue
+            }
         } catch {
             if ($_.Exception.Response -and $_.Exception.Response.StatusCode.Value__ -eq 404) {
                 $cacheERROR["$n"] = "Nombre ${n}: Nombre no encontrado o válido"
             } else {
-                $cacheERROR["$id"] = "No se pudo conectar a la API. Verifique su conexión a Internet"
+                $cacheERROR["$n"] = "No se pudo conectar a la API. Verifique su conexión a Internet"
             }
             continue
         }
-
-
-        $cacheJSON["$($json.id)"] = $json
-        $salida = @{
-            id = $json.id
-            name = $json.name
-            genus = $json.genus
-            calories = $json.nutritions.calories
-            fat = $json.nutritions.fat
-            sugar = $json.nutritions.sugar
-            carbohydrates = $json.nutritions.carbohydrates
-            protein = $json.nutritions.protein
-        }
-        $salida | ConvertTo-Json -Compress
     }
 }
 
 # Mostrar errores
-foreach ($e in $cacheERROR.Keys) {
-    Write-Host $cacheERROR[$e]
+if ($cacheERROR.count -gt 0) {
+    Write-Host "\n---- Errores ----" -ForegroundColor Red
+    $cacheERROR.GetEnumerator() | ForEach-Object { Write-Host $_.value -ForegroundColor Yellow}
 }
 
-# Guardar cache
-$cacheJSON.Values | ForEach-Object { $_ | ConvertTo-Json -Compress } | Set-Content $cacheFile
-
+# Guardar cache evitando duplicados -- Si no, es posible que se guarde informacion repetida en el cache
+$idsGuardados = @{}
+$cacheJSON.Values | Where-Object {
+    if ($idsGuardados.ContainsKey($_.id)) {$false}
+    else {$idsGuardados[$_.id] = $true; $true }
+    } | ForEach-Object {$_ | ConvertTo-Json -Compress } | Set-Content $cacheFile
 exit 0
