@@ -5,7 +5,6 @@
 # WEIDMANN, GERMAN ARIEL
 # DE SOLAY, FELIX                       
 ########################################
-
 <#
 .SYNOPSIS
     Script del ejercicio 4 de la APL 1.
@@ -18,19 +17,19 @@
     junto con la fecha y hora (yyyyMMdd-HHmmss), 
     Ejemplo: descargas_20250401_212121.zip.
 
-.PARAMETER directorio
+.PARAMETER directorioPS
     Ruta del directorio a monitorear
 
-.PARAMETER salida
+.PARAMETER salidaPS
     Ruta del directorio en donde se van a crear los backups
 
-.PARAMETER kill
+.PARAMETER killPS
     Flag que indica que el script debe detener el demonio iniciado
 
-.PARAMETER cantidad
+.PARAMETER cantidadPS
     cantidad de archivos a ordenar antes de generar un backup
 
-.PARAMETER help
+.PARAMETER helpPS
     Muestra esta ayuda.
 
 .NOTES
@@ -46,19 +45,19 @@
 #>
 param(
     [Parameter(Mandatory)]
-    [ValidateNotNullOrWhiteSpace()]
+    [ValidateNotNullOrEmpty()]
     [ValidateScript({ Test-Path $_ })]
     [ValidateScript({ (Get-Item $_).PSIsContainer })]
     [Alias("directorio")][string]$directorioPS,
 
     [Parameter(Mandatory)]
-    [ValidateNotNullOrWhiteSpace()]
+    [ValidateNotNullOrEmpty()]
     [ValidateScript({ Test-Path $_ })]
     [ValidateScript({ (Get-Item $_).PSIsContainer })]
     [Alias("salida")][string]$salidaPS,
 
     [Parameter(Mandatory)]
-    [ValidateNotNullOrWhiteSpace()]
+    [ValidateNotNullOrEmpty()]
     [ValidateRange(1, [int]::MaxValue)]
     [Alias("cantidad")][System.int32]$cantidadPS,
     
@@ -172,7 +171,6 @@ $archivosExistentes = Get-ChildItem -Path $directorioPS -File
 foreach ($archivo in $archivosExistentes) {
     ProcesarArchivo -rutaArchivo $archivo.FullName -directorio $directorioPS -salida $salidaPS -cantidad $cantidadPS
     $ordenados++
-    Write-Host "Ordenados es: $ordenados"
     if ($ordenados -eq $cantidadPS) {
         Write-Host "Entre aca "
         $nombreDir = Split-Path -Path (Get-Location) -Leaf
@@ -193,25 +191,28 @@ foreach ($archivo in $archivosExistentes) {
 
 #El nombre del job es la ruta donde se ejecuta y _job
 $rutaAbsoluta = (Resolve-Path $directorioPS).Path
+$salidaAbsoluta = (Resolve-Path $salidaPS).Path
 $nombreJob = "${rutaAbsoluta}_job"
 
-Write-Host "`nEl proceso se está ejecutando correctamente en segundo plano.`n"
+Write-Host "`nEl proceso se esta ejecutando correctamente en segundo plano.`n"
+
 
 Start-Job -Name "$nombreJob" -ScriptBlock {
     param($directorio, $salida, $cantidad, $ordenados)
 
-    
     $watcher = New-Object System.IO.FileSystemWatcher
     $watcher.Path = (Resolve-Path $directorio).Path
     $watcher.Filter = '*'
     $watcher.IncludeSubdirectories = $false
-    $watcher.NotifyFilter = [IO.NotifyFilters]::FileName, [IO.NotifyFilters]::LastWrite
+    $watcher.NotifyFilter = [IO.NotifyFilters]'FileName, DirectoryName, LastWrite, Size'
 
     # Variable contador local dentro del job
     $script:contadorOrdenados = $ordenados
 
     $onChange = {
+        $evento = $Event.SourceEventArgs.ChangeType
         $archivo = $Event.SourceEventArgs.FullPath
+
 
         if (-not (Test-Path $archivo)) {
             return
@@ -242,26 +243,25 @@ Start-Job -Name "$nombreJob" -ScriptBlock {
                 return
             }
 
-            # Incrementa contador local
             $script:contadorOrdenados++
 
             if ($script:contadorOrdenados -eq $cantidad) {
-                $nombreDir = Split-Path -Path (Get-Location) -Leaf
+                $nombreDir = Split-Path -Path $directorio -Leaf
                 $fecha = Get-Date -Format "yyyyMMdd_HHmmss"
                 $nombreZip = "${nombreDir}_${fecha}.zip"
                 $rutaZip = Join-Path -Path $salida -ChildPath $nombreZip
 
                 Compress-Archive -Path "$directorio\*" -DestinationPath $rutaZip -Force
-                Write-Host "Se creó el zip en $rutaZip"
-
                 $script:contadorOrdenados = 0
             }
         }
     }
-     #Los eventos son crear o renombrar un archivo. Cuando movemos un archivo a esta carpeta, vscode/windows generan un movimiento equivalente que puede ser tanto created
-    #como renamed, asi que ponemos los dos para que tome todos los casos.
-    Register-ObjectEvent -InputObject $watcher -EventName Created -Action $onChange
-    Register-ObjectEvent -InputObject $watcher -EventName Renamed -Action $onChange
+
+    #Registramos todos los eventos de vscode/windows, internamente pueden estar haciendo mas cosas que created o renamed, por eso ponemos changed y deleted
+    Register-ObjectEvent $watcher Created -Action $onChange | Out-Null
+    Register-ObjectEvent $watcher Renamed -Action $onChange | Out-Null
+    Register-ObjectEvent $watcher Changed -Action $onChange | Out-Null
+    Register-ObjectEvent $watcher Deleted -Action $onChange | Out-Null
 
     $watcher.EnableRaisingEvents = $true
 
@@ -269,6 +269,6 @@ Start-Job -Name "$nombreJob" -ScriptBlock {
         Wait-Event -Timeout 1 | Out-Null
     }
 
-} -ArgumentList $directorioPS, $salidaPS, $cantidadPS, $ordenados | Out-Null
+} -ArgumentList $rutaAbsoluta, $salidaAbsoluta, $cantidadPS, $ordenados | Out-Null
 
 
