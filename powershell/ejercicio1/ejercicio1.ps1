@@ -5,6 +5,7 @@
 # WEIDMANN, GERMAN ARIEL
 # DE SOLAY, FELIX                       
 ########################################
+
 <#
 .SYNOPSIS
     Script del ejercicio 1 de la APL 1.
@@ -40,8 +41,10 @@
     .\ejercicio1.ps1 -d .\entrada.csv -p
 #>
 
+[CmdletBinding(DefaultParameterSetName = "Archivo")]
 param(
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory = $true, ParameterSetName = "Archivo")]
+    [Parameter(Mandatory = $true, ParameterSetName = "Pantalla")]
     [ValidateNotNullOrWhiteSpace()]
     [ValidateScript({ (Test-Path $_) -and (Get-Content $_).Length -gt 0})]
     [ValidateScript({ [System.IO.Path]::GetExtension($_) -eq ".csv" })]
@@ -57,7 +60,9 @@ param(
 
     [Parameter(Mandatory, ParameterSetName = "Pantalla")]
     [Alias("p")][switch]$Pantalla,
-    [Alias("h")][switch]$Help
+
+    [Parameter(Mandatory = $false,ParameterSetName = "Help")]
+    [Alias("h")][switch]$Help    
 )
 function ValidarJSON {
     param([string]$RutaArchivo)
