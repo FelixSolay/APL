@@ -32,7 +32,7 @@ function ayuda() {
   Se debe elegir uno u otro.
 
 Ejemplo de uso:
-  ./ejercicio1.sh -d ./pruebas_normales.csv -a ./salida.json
+  ./ejercicio1.sh -d ./entradas_csv -a ./salida.json
 
 EOF
 }
@@ -43,7 +43,7 @@ function validarJSON()
     if jq empty $1 > /dev/null 2>&1; then
         echo "El JSON es válido." 
     else
-        echo "El JSON es inválido."
+        echo "El Formato del JSON no ha podido ser validado por el jq."
         exit 1
     fi
 }
@@ -59,20 +59,28 @@ function validaciones()
         exit 1
     fi
 
-    if [[ ! -s "$directorio" ]]; then
-        echo "El directorio de entrada no existe o está vacío"
+    if [[ ! -d "$directorio" ]]; then
+        echo "El directorio especificado no existe"
         exit 2
     fi
 
-    if [[ "${directorio##*.}" != "csv" ]]; then
-        echo "El directorio de entrada no es del tipo CSV (Valores separados por comas)"
+    csv_count=$(find "$directorio" -maxdepth 1 -name "*.csv" -type f | wc -l)
+    if [[ $csv_count -eq 0 ]]; then
+        echo "No se encontraron archivos .csv en el directorio"
         exit 3
     fi
 
-    if [[ $(basename "$directorio" | grep -o "\." | wc -l) -gt 1 ]]; then
-        echo "El directorio de entrada tiene una doble extensión"
-        exit 4
-    fi
+
+    #no hay que validar como si fuera un archivo de entrada, porque es un directorio que tiene archivos
+    #if [[ "${directorio##*.}" != "csv" ]]; then
+    #    echo "El archivo de entrada no es del tipo CSV (Valores separados por comas)"
+    #    exit 3
+    #fi
+
+    #if [[ $(basename "$directorio" | grep -o "\." | wc -l) -gt 1 ]]; then
+    #    echo "El archivo de entrada tiene una doble extensión"
+    #    exit 4
+    #fi
 
     if [[ -n "$archivo" && "$pantalla" == "true" ]]; then
         echo "Solo se puede mostrar la salida por archivo o por pantalla, no ambos"
@@ -148,9 +156,16 @@ echo "Procesando AWK..."
 
 #validar el JSON si se eligió archivo y no pantalla
 if [[ "$pantalla" == "true" ]]; then
-    awk -F, -v ruta="/dev/stdout" -f script.awk "$directorio"
+    for csv in "$directorio"/*.csv; do
+        [[ -s "$csv" ]] && awk -F, -v ruta="/dev/stdout" -f script.awk "$csv"
+    done
 else
-    awk -F, -v ruta="$archivo" -f script.awk "$directorio"
+    tmp="$(mktemp)"
+    for csv in "$directorio"/*.csv; do
+        [[ -s "$csv" ]] && awk -F, -v ruta="$tmp" -f script.awk "$csv"
+    done
+    # Consolidar el archivo temporal en el archivo final y validar JSON
+    mv "$tmp" "$archivo"
     validarJSON "$archivo"
 fi
 
