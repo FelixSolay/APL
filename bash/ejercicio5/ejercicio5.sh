@@ -165,8 +165,11 @@ for i in "${nameUnicos[@]}"; do
     if [ "$i" == "0" ]; then
         continue
     fi
+    nameMinus="${i,,}"
+
     for idKey in "${!cacheJSON[@]}"; do
-        if [ "$i" == $(echo ${cacheJSON[${idKey}]} | jq -r '.name') ]; then
+        nameCache=$(echo "${cacheJSON[${idKey}]}" | jq -r '.name' | tr '[:upper:]' '[:lower:]')
+        if [ "$nameMinus" == "$nameCache" ]; then
             key="$idKey"
             break
         fi
