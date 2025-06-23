@@ -11,15 +11,16 @@
     Script del ejercicio 1 de la APL 1.
 
 .DESCRIPTION
-    Lee un archivo CSV con registros de temperaturas en distintas ubicaciones.
-    Procesa la información y genera una salida en formato JSON con:
+    Lee un Directorio con archivos CSV que contienen registros de 
+    temperaturas en distintas ubicaciones. Procesa la información 
+    y genera una salida en formato JSON con:
         • Promedios
         • Máximos
         • Mínimos
     agrupados por fecha y ubicación.
 
 .PARAMETER Directorio
-    Ruta del archivo CSV de entrada.
+    Ruta del Directorio que contiene los archivos CSV de entrada.
 
 .PARAMETER Archivo
     Ruta del archivo JSON de salida.
@@ -35,10 +36,10 @@
     Se debe elegir uno u otro.
 
 .EXAMPLE
-    .\ejercicio1.ps1 -Directorio .\pruebas_normales.csv -Archivo .\salida.json
+    .\ejercicio1.ps1 -Directorio ./entradas_csv -Archivo .\salida.json
 
 .EXAMPLE
-    .\ejercicio1.ps1 -d .\entrada.csv -p
+    .\ejercicio1.ps1 -d ./entradas_csv -p
 #>
 
 [CmdletBinding(DefaultParameterSetName = "Archivo")]
@@ -46,9 +47,9 @@ param(
     [Parameter(Mandatory = $true, ParameterSetName = "Archivo")]
     [Parameter(Mandatory = $true, ParameterSetName = "Pantalla")]
     [ValidateNotNullOrWhiteSpace()]
-    [ValidateScript({ (Test-Path $_) -and (Get-Content $_).Length -gt 0})]
-    [ValidateScript({ [System.IO.Path]::GetExtension($_) -eq ".csv" })]
-    [ValidateScript({ -not (([System.IO.Path]::GetFileName($_)) -match '\.csv\.\w+$') })]
+    [ValidateScript({
+        return (Test-Path $_) -and ((Get-Item $_).PSIsContainer)
+    })]
     [Alias("d")][string]$Directorio,
 
     [Parameter(Mandatory, ParameterSetName = "Archivo")]
@@ -81,65 +82,74 @@ function ProcesarCSV {
         [string]$ArchivoSalida,
         [switch]$Pantalla        
     )
-
-    $Datos = Import-Csv -Path $RutaCSV -Delimiter ',' -Header 'ID','Fecha','Hora','Direccion','Temperatura'
-
     $Resultados = @{}  #hashtable clave|valor
-    $LineaActual = 1
-    foreach ($Registro in $Datos) {
-        $ID = $Registro.ID
-        $Fecha = $Registro.Fecha
-        $Hora = $Registro.Hora
-        $Direccion = $Registro.Direccion
-        $Temperatura = $Registro.Temperatura
-        # Validaciones
-        $Errores = @()
-        if (-not ($ID -match '^\d+$')) {
-            $Errores += "Línea ${LineaActual}: Error en el ID. El mismo debe ser numérico."
-        }
-        if (-not ($Fecha -match '^\d{4}/(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])$')) {
-            $Errores += "Línea ${LineaActual}: Error en la fecha. El formato debe ser yyyy/mm/dd."
-        }
-        if (-not ($Hora -match '^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$')) {
-            $Errores += "Línea ${LineaActual}: Error en la hora. El formato debe ser hh:mm:ss."
-        }
-        if ($Direccion -notin @("Norte", "Sur", "Este", "Oeste")) {
-            $Errores += "Línea ${LineaActual}: Error en la dirección. Valores posibles: Norte, Sur, Este, Oeste."
-        }
-        if (-not ($Temperatura -match '^-?\d+(\.\d+)?$')) {
-            $Errores += "Línea ${LineaActual}: Error en la temperatura. Debe ser un número decimal."
-        }
-        $LineaActual++
+    $archivosCSV = Get-ChildItem -Path $RutaCSV -Filter *.csv -File
+    #Agrego otra validación para que no haya doble Extensión
+    $archivosCSV = $archivosCSV | Where-Object { $_.Name -match '\.csv$' }
 
-        if ($Errores.Count -gt 0) {
-            foreach ($Error in $Errores) {
-                Write-Output $Error
+    if ($archivosCSV.Count -eq 0) {
+        Write-Output "No se encontraron archivos CSV en el directorio especificado."
+        exit 1
+    }
+
+    foreach ($CSV in $archivosCSV) {
+        $Datos = Import-Csv -Path $CSV.FullName -Delimiter ',' -Header 'ID','Fecha','Hora','Direccion','Temperatura'
+        $LineaActual = 1
+        foreach ($Registro in $Datos) {
+            $ID = $Registro.ID
+            $Fecha = $Registro.Fecha
+            $Hora = $Registro.Hora
+            $Direccion = $Registro.Direccion
+            $Temperatura = $Registro.Temperatura
+            # Validaciones
+            $Errores = @()
+            if (-not ($ID -match '^\d+$')) {
+                $Errores += "Línea ${LineaActual}: Error en el ID. El mismo debe ser numérico."
             }
-            continue
-        }
-
-        # Procesamiento
-        if (-not $Resultados.ContainsKey($Fecha)) {
-            $Resultados[$Fecha] = @{}
-        }
-        if (-not $Resultados[$Fecha].ContainsKey($Direccion)) {
-            $Resultados[$Fecha][$Direccion] = @{ #hashtable de estadísticas para cierta fecha y dirección
-                Min = [double]::MaxValue
-                Max = [double]::MinValue
-                Suma = 0
-                Cont = 0
+            if (-not ($Fecha -match '^\d{4}/(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])$')) {
+                $Errores += "Línea ${LineaActual}: Error en la fecha. El formato debe ser yyyy/mm/dd."
             }
-        }
+            if (-not ($Hora -match '^([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$')) {
+                $Errores += "Línea ${LineaActual}: Error en la hora. El formato debe ser hh:mm:ss."
+            }
+            if ($Direccion -notin @("Norte", "Sur", "Este", "Oeste")) {
+                $Errores += "Línea ${LineaActual}: Error en la dirección. Valores posibles: Norte, Sur, Este, Oeste."
+            }
+            if (-not ($Temperatura -match '^-?\d+(\.\d+)?$')) {
+                $Errores += "Línea ${LineaActual}: Error en la temperatura. Debe ser un número decimal."
+            }
+            $LineaActual++
 
-        $Temp = [double]$Temperatura
-        if ($Temp -lt $Resultados[$Fecha][$Direccion].Min) {
-            $Resultados[$Fecha][$Direccion].Min = $Temp
+            if ($Errores.Count -gt 0) {
+                foreach ($Error in $Errores) {
+                    Write-Output $Error
+                }
+                continue
+            }
+
+            # Procesamiento
+            if (-not $Resultados.ContainsKey($Fecha)) {
+                $Resultados[$Fecha] = @{}
+            }
+            if (-not $Resultados[$Fecha].ContainsKey($Direccion)) {
+                $Resultados[$Fecha][$Direccion] = @{ #hashtable de estadísticas para cierta fecha y dirección
+                    Min = [double]::MaxValue
+                    Max = [double]::MinValue
+                    Suma = 0
+                    Cont = 0
+                }
+            }
+
+            $Temp = [double]$Temperatura
+            if ($Temp -lt $Resultados[$Fecha][$Direccion].Min) {
+                $Resultados[$Fecha][$Direccion].Min = $Temp
+            }
+            if ($Temp -gt $Resultados[$Fecha][$Direccion].Max) {
+                $Resultados[$Fecha][$Direccion].Max = $Temp
+            }
+            $Resultados[$Fecha][$Direccion].Suma += $Temp
+            $Resultados[$Fecha][$Direccion].Cont += 1
         }
-        if ($Temp -gt $Resultados[$Fecha][$Direccion].Max) {
-            $Resultados[$Fecha][$Direccion].Max = $Temp
-        }
-        $Resultados[$Fecha][$Direccion].Suma += $Temp
-        $Resultados[$Fecha][$Direccion].Cont += 1
     }
 
     $Salida = @{ fechas = @{} }

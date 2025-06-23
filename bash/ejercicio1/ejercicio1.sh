@@ -14,8 +14,9 @@ function ayuda() {
 ───────────────────────────────────────────────
 
  Objetivo:
-  Lee un archivo CSV con registros de temperaturas en distintas ubicaciones.
-  Procesa la información y genera una salida en formato JSON con:
+  Lee un Directorio con archivos CSV que contienen registros de 
+  temperaturas en distintas ubicaciones. Procesa la información 
+  y genera una salida en formato JSON con:
     • Promedios
     • Máximos
     • Mínimos
@@ -23,7 +24,7 @@ function ayuda() {
 
  Parámetros:
   -h, --help           Muestra esta ayuda
-  -d, --directorio     Ruta del directorio con el archivo CSV de entrada
+  -d, --directorio     Ruta del directorio con los archivos CSV de entrada
   -a, --archivo        Ruta del archivo JSON de salida
   -p, --pantalla       Muestra el resultado por pantalla
 
