@@ -5,14 +5,15 @@
 # WEIDMANN, GERMAN ARIEL
 # DE SOLAY, FELIX                       
 ########################################
+
 <#
 .SYNOPSIS
     Script del ejercicio 4 de la APL 1.
 
 .DESCRIPTION
-    Demonio que detecta cada vez que un archivo nuevo aparece en un directorio
-    “descargas”. Una vez detectado, se mueve a un subdirectorio “extensión” cuyo nombre será la
-    extensión del archivo y que estará localizado en un directorio “destino”
+    Demonio que detecta cada vez que un archivo nuevo aparece en un directorio 
+    "descargas". Una vez detectado, se mueve a un subdirectorio "extensión" cuyo nombre será la
+    extensión del archivo y que estará localizado en un directorio "destino"
     Además cada cierta cantidad de archivos realizará un backup con el nobre del directorio respaldado
     junto con la fecha y hora (yyyyMMdd-HHmmss), 
     Ejemplo: descargas_20250401_212121.zip.
@@ -39,25 +40,29 @@
 .EXAMPLE
 
     .\ejercicio4.ps1 -directorio ./descargas -salida ./backup -cantidad 3 -kill
-    .\ejercicio4.ps1 -directorio ./descargas -salida ./backup -cantidad 3 
-    .\ejercicio4.ps1 -directorio ./descargas2 -salida ./backup -cantidad 5 -kill
 
+.EXAMPLE
+    .\ejercicio4.ps1 -directorio ./descargas -salida ./backup -cantidad 3 
+
+.EXAMPLE
+    .\ejercicio4.ps1 -directorio ./descargas2 -salida ./backup -cantidad 5 -kill
 #>
+
 param(
     [Parameter(Mandatory)]
-    [ValidateNotNullOrEmpty()]
+    [ValidateNotNullOrWhiteSpace()]
     [ValidateScript({ Test-Path $_ })]
     [ValidateScript({ (Get-Item $_).PSIsContainer })]
     [Alias("directorio")][string]$directorioPS,
 
     [Parameter(Mandatory)]
-    [ValidateNotNullOrEmpty()]
+    [ValidateNotNullOrWhiteSpace()]
     [ValidateScript({ Test-Path $_ })]
     [ValidateScript({ (Get-Item $_).PSIsContainer })]
     [Alias("salida")][string]$salidaPS,
 
     [Parameter(Mandatory)]
-    [ValidateNotNullOrEmpty()]
+    [ValidateNotNullOrWhiteSpace()]
     [ValidateRange(1, [int]::MaxValue)]
     [Alias("cantidad")][System.int32]$cantidadPS,
     
@@ -159,6 +164,8 @@ function ProcesarArchivo {
     }
 }
 
+#----------------------------------------------------Main---------------------------------------------------------
+
 if ($HelpPS) {
     Get-Help -Detailed $MyInvocation.MyCommand.Path
     exit 0
@@ -172,13 +179,10 @@ foreach ($archivo in $archivosExistentes) {
     ProcesarArchivo -rutaArchivo $archivo.FullName -directorio $directorioPS -salida $salidaPS -cantidad $cantidadPS
     $ordenados++
     if ($ordenados -eq $cantidadPS) {
-        Write-Host "Entre aca "
         $nombreDir = Split-Path -Path (Get-Location) -Leaf
         $fecha = Get-Date -Format "yyyyMMdd_HHmmss"
         $nombreZip = "${nombreDir}_${fecha}.zip"
         $rutaZip = Join-Path -Path $salidaPS -ChildPath $nombreZip
-        
-        Write-Host "Directorio actual: $(Get-Location)"
 
         # Comprime todo el contenido del directorio en el ZIP
         Compress-Archive -Path "$directorioPS\*" -DestinationPath $rutaZip -Force
@@ -210,10 +214,7 @@ Start-Job -Name "$nombreJob" -ScriptBlock {
     $script:contadorOrdenados = $ordenados
 
     $onChange = {
-        $evento = $Event.SourceEventArgs.ChangeType
         $archivo = $Event.SourceEventArgs.FullPath
-
-
         if (-not (Test-Path $archivo)) {
             return
         }
