@@ -5,6 +5,7 @@
 # WEIDMANN, GERMAN ARIEL
 # DE SOLAY, FELIX                       
 ########################################
+
 <#
 .SYNOPSIS
     Script del ejercicio 2 de la APL 1
@@ -47,9 +48,10 @@
     .\ejercicio2.ps1 -m .\matriz.txt -p 3 -s "|"
 #>
 
-
+[CmdletBinding(DefaultParameterSetName = "Producto")]
 param(
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory = $true, ParameterSetName = "Producto")]
+    [Parameter(Mandatory = $true, ParameterSetName = "Transponer")]
     [ValidateNotNullOrWhiteSpace()]
     [ValidateScript({ (Test-Path $_) -and (Get-Item $_).Length -gt 0 })]
     [ValidateScript({ $_.EndsWith(".txt") })]
@@ -63,13 +65,14 @@ param(
     [Parameter(Mandatory, ParameterSetName = "Transponer")]
     [Alias("t")][switch]$trasponer,
 
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory = $true, ParameterSetName = "Producto")]
+    [Parameter(Mandatory = $true, ParameterSetName = "Transponer")]
     [ValidateNotNullOrWhiteSpace()]
     [ValidateScript({ $_ -match '^[^0-9-]{1}$' })]
     [ValidateScript({ $_.Length -eq 1 })]
     [Alias("s")][string]$separador,
-
-    [Alias("h")][switch]$help
+    [Parameter(Mandatory = $false, ParameterSetName = "Ayuda")]
+    [Alias("h")][switch]$Help
 )
 function ProcesarMatriz {
     param (
@@ -91,7 +94,7 @@ function ProcesarMatriz {
     
     foreach ($i in 0..($lineas.Count - 1)) {#por cada línea leída...
         #Uso Escape($sep) por si pasan un separador que sea caracter especial
-        $valores = $lineas[$i] -split [regex]::Escape($sep)
+        $valores = $lineas[$i] -split [regex]::Escape($sep) | ForEach-Object { $_.Trim() }
         if (-not $numCols) { 
             $numCols = $valores.Count 
         }

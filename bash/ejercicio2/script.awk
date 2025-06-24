@@ -28,13 +28,22 @@ NR<2{
 
     if(opcion == "trasponer") #Trasponer
     { 
-        for(i=1; i<=columnas; i++)
-            matriz[i]= matriz[i] separador $i;
+        for(i=1; i<=columnas; i++){
+            if(matriz[i] == "")
+                matriz[i] = $i
+            else
+                matriz[i]= matriz[i] separador $i
+        }            
     }
     else #Producto escalar
     {
-        for(i=1; i<=columnas; i++)
-            matriz[NR]= matriz[NR] separador $i * opcion;
+        for(i=1; i<=columnas; i++){
+            valor = $i * opcion
+            if(matriz[NR] == "")
+                matriz[NR] = valor
+            else
+                matriz[NR]= matriz[NR] separador valor
+        }
     }
 }
 
