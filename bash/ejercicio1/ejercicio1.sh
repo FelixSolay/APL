@@ -1,4 +1,6 @@
 #!/bin/bash
+
+
 ########################################
 #INTEGRANTES DEL GRUPO
 # MARTINS LOURO, LUCIANO AGUSTÍN
@@ -70,18 +72,6 @@ function validaciones()
         echo "No se encontraron archivos .csv en el directorio"
         exit 3
     fi
-
-
-    #no hay que validar como si fuera un archivo de entrada, porque es un directorio que tiene archivos
-    #if [[ "${directorio##*.}" != "csv" ]]; then
-    #    echo "El archivo de entrada no es del tipo CSV (Valores separados por comas)"
-    #    exit 3
-    #fi
-
-    #if [[ $(basename "$directorio" | grep -o "\." | wc -l) -gt 1 ]]; then
-    #    echo "El archivo de entrada tiene una doble extensión"
-    #    exit 4
-    #fi
 
     if [[ -n "$archivo" && "$pantalla" == "true" ]]; then
         echo "Solo se puede mostrar la salida por archivo o por pantalla, no ambos"

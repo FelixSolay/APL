@@ -1,5 +1,4 @@
 #!/bin/bash
-
 ########################################
 #INTEGRANTES DEL GRUPO
 # MARTINS LOURO, LUCIANO AGUSTÍN
