@@ -121,8 +121,8 @@ function ProcesarCSV {
             $LineaActual++
 
             if ($Errores.Count -gt 0) {
-                foreach ($Error in $Errores) {
-                    Write-Output $Error
+                foreach ($Errorss in $Errores) {
+                    Write-Output $Errorss
                 }
                 continue
             }
