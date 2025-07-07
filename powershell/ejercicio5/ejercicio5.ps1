@@ -39,7 +39,9 @@ param (
     [Parameter(Mandatory,ParameterSetName = 'name')]
     [Parameter(Mandatory,ParameterSetName = 'idName')]
     [ValidateNotNullOrWhiteSpace()]
-    [string[]]$name
+    [string[]]$name,
+
+    [Alias("help")][switch]$helpPS
 )
 
 #Funcion para mostrar en formato
@@ -53,6 +55,13 @@ function MostrarFruta($f) {
     Write-Output "carbohydrates: $($f.nutritions.carbohydrates)"
     Write-Output "protein: $($f.nutritions.protein)"
     Write-Output ""
+}
+
+#----------------------------------------------------Main---------------------------------------------------------
+
+if ($HelpPS) {
+    Get-Help -Detailed $MyInvocation.MyCommand.Path
+    exit 0
 }
 
 #Variables necesarias

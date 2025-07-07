@@ -71,7 +71,7 @@ param(
     [ValidateScript({ $_ -match '^[^0-9-]{1}$' })]
     [ValidateScript({ $_.Length -eq 1 })]
     [Alias("s")][string]$separador,
-    [Parameter(Mandatory = $false, ParameterSetName = "Ayuda")]
+    [Parameter(Mandatory = $false)]
     [Alias("h")][switch]$Help
 )
 function ProcesarMatriz {
