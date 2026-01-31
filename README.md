@@ -31,3 +31,15 @@ Dependiendo del script que desees ejecutar, necesitarás:
 1. **Clonar el repositorio:**
    ```bash
    git clone [https://github.com/FelixSolay/APL.git](https://github.com/FelixSolay/APL.git)
+   ```
+2. **Ejecutar scripts de Bash::**
+   ```bash
+   cd bash
+   chmod +x nombre_del_script.sh
+   ./nombre_del_script.sh
+   ```
+1. **Ejecutar scripts de PowerShell:**
+   ```powershell
+   cd powershell
+   .\nombre_del_script.ps1
+   ```      
